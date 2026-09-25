@@ -1,0 +1,183 @@
+@page "/projects"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@using ProjectOps.Web.Models
+@inject HttpClient HttpClient
+
+<PageTitle>Projects</PageTitle>
+
+<h1>Projects</h1>
+
+<EditForm Model="projectForm" OnValidSubmit="SaveProject">
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label class="form-label" for="project-code">Project Code</label>
+            <InputText id="project-code" class="form-control" @bind-Value="projectForm.ProjectCode" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="project-name">Project Name</label>
+            <InputText id="project-name" class="form-control" @bind-Value="projectForm.ProjectName" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="client-name">Client Name</label>
+            <InputText id="client-name" class="form-control" @bind-Value="projectForm.ClientName" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="status">Status</label>
+            <InputText id="status" class="form-control" @bind-Value="projectForm.Status" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+        @(isEditMode ? "Update Project" : "Create Project")
+    </button>
+
+    @if (isEditMode)
+    {
+        <button type="button" class="btn btn-secondary ms-2" @onclick="ResetForm">Cancel</button>
+    }
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger mt-3" role="alert">@errorMessage</div>
+}
+
+@if (projects is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-striped mt-4">
+        <thead>
+            <tr>
+                <th>Project Code</th>
+                <th>Project Name</th>
+                <th>Client Name</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var project in projects)
+            {
+                <tr>
+                    <td>@project.ProjectCode</td>
+                    <td>@project.ProjectName</td>
+                    <td>@project.ClientName</td>
+                    <td>@project.Status</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-primary me-2" @onclick="() => EditProject(project)">Edit</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => DeleteProject(project.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Project>? projects;
+    private Project projectForm = new();
+    private bool isEditMode;
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjects();
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            var response = await HttpClient.GetAsync("http://localhost:5103/api/projects");
+            response.EnsureSuccessStatusCode();
+            projects = await response.Content.ReadFromJsonAsync<List<Project>>() ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            projects = [];
+            errorMessage = "The projects could not be loaded from the API.";
+        }
+    }
+
+    private async Task SaveProject()
+    {
+        errorMessage = null;
+        isSaving = true;
+
+        try
+        {
+            HttpResponseMessage response;
+
+            if (isEditMode)
+            {
+                response = await HttpClient.PutAsJsonAsync(
+                    $"http://localhost:5103/api/projects/{projectForm.Id}", projectForm);
+            }
+            else
+            {
+                response = await HttpClient.PostAsJsonAsync(
+                    "http://localhost:5103/api/projects", projectForm);
+            }
+
+            response.EnsureSuccessStatusCode();
+            ResetForm();
+            await LoadProjects();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "The project could not be saved.";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void EditProject(Project project)
+    {
+        projectForm = new Project
+        {
+            Id = project.Id,
+            ProjectCode = project.ProjectCode,
+            ProjectName = project.ProjectName,
+            ClientName = project.ClientName,
+            Status = project.Status
+        };
+        isEditMode = true;
+        errorMessage = null;
+    }
+
+    private async Task DeleteProject(int id)
+    {
+        errorMessage = null;
+
+        try
+        {
+            var response = await HttpClient.DeleteAsync(
+                $"http://localhost:5103/api/projects/{id}");
+            response.EnsureSuccessStatusCode();
+
+            if (projectForm.Id == id)
+            {
+                ResetForm();
+            }
+
+            await LoadProjects();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "The project could not be deleted.";
+        }
+    }
+
+    private void ResetForm()
+    {
+        projectForm = new Project();
+        isEditMode = false;
+    }
+}
