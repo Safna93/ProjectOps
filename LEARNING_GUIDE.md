@@ -736,3 +736,177 @@ Modified:
 - `ProjectOps.Api/Controllers/ProjectsController.cs`
 - `ProjectOps.Api/Exceptions/GlobalExceptionHandler.cs`
 - `LEARNING_GUIDE.md`
+
+## Stage 11 - JWT Authentication and Authorization
+
+### What is authentication?
+
+Authentication means checking who someone is. In ProjectOps, the API checks a
+username and password during login.
+
+### What is authorization?
+
+Authorization means checking what an authenticated user is allowed to access.
+After login, ProjectOps uses `[Authorize]` to require a valid JWT before the
+Projects API can be used.
+
+### Authentication vs authorization
+
+Authentication answers: "Who are you?"
+
+Authorization answers: "Are you allowed to access this resource?"
+
+The login endpoint performs authentication. The `[Authorize]` attribute and
+JWT middleware enforce authorization for protected endpoints.
+
+### What is JWT?
+
+JWT means JSON Web Token. It is a signed text token that an API can give to a
+client after successful login. The client sends the token with later requests,
+so the API can validate the request without asking the client for its password
+again.
+
+### JWT structure
+
+A JWT has three parts separated by periods:
+
+```text
+Header.Payload.Signature
+```
+
+- The **Header** describes the token type and signing algorithm.
+- The **Payload** contains claims, such as the username, issuer, audience, and
+	expiration time.
+- The **Signature** helps prove that the token was created by the API and was
+	not changed.
+
+### JWT terms
+
+- A **claim** is a small piece of information inside the token, such as a
+	username.
+- The **issuer** identifies the application that created the token.
+- The **audience** identifies the application or API the token is intended for.
+- The **expiry** is the time after which the token is no longer accepted.
+- The **signing key** is a secret value used to create and validate the token.
+
+### HMAC SHA256 signing
+
+ProjectOps signs tokens with HMAC SHA256. HMAC uses a shared secret key, and
+SHA256 is the hashing algorithm. The API uses the same secret key to create and
+validate the signature. If the token is changed or signed with another key,
+validation fails.
+
+### POST /api/Auth/login
+
+`POST /api/Auth/login` accepts a JSON body containing `Username` and
+`Password`. For this learning stage, the controller checks one hard-coded demo
+username and password.
+
+If the credentials are valid, the API generates a JWT and returns it with
+HTTP `200 OK`. If they are invalid, the API returns `401 Unauthorized`.
+
+The hard-coded username and password are only for learning. This is not a
+production authentication system and it does not use ASP.NET Core Identity or
+a users database.
+
+### How the JWT is generated
+
+After valid credentials are received, `AuthController` creates a username/name
+claim and adds the configured issuer, audience, and expiration to the token.
+It then signs the token with the configured HMAC SHA256 signing key and returns
+the token to the client.
+
+### AddAuthentication() and AddJwtBearer()
+
+`AddAuthentication()` registers authentication services and identifies JWT
+Bearer as the default authentication scheme.
+
+`AddJwtBearer()` configures how ASP.NET Core reads and validates a token sent in
+the HTTP `Authorization` header.
+
+### TokenValidationParameters
+
+`TokenValidationParameters` tells JWT Bearer authentication what to check. In
+ProjectOps, it validates:
+
+- The signing key.
+- The issuer.
+- The audience.
+- The token lifetime and expiration.
+
+If one of these checks fails, the request is not authenticated.
+
+### Authentication middleware and authorization middleware
+
+`app.UseAuthentication()` reads the bearer token and tries to identify the
+caller.
+
+`app.UseAuthorization()` checks whether that authenticated caller is allowed
+to access the requested endpoint.
+
+Authentication must come before authorization. Authorization needs the user
+identity created by authentication. If authorization runs first, it cannot
+properly determine whether the request has a valid user identity.
+
+### [Authorize] on ProjectsController
+
+`[Authorize]` on `ProjectsController` protects the GET, POST, PUT, and DELETE
+project endpoints. Requests without a valid JWT receive `401 Unauthorized`.
+Requests with a valid JWT can continue to the controller and database.
+
+### Complete JWT flow
+
+```text
+Username + Password
+	↓
+POST /api/Auth/login
+	↓
+Validate credentials
+	↓
+Generate JWT
+	↓
+Client sends JWT
+	↓
+Authentication middleware validates JWT
+	↓
+[Authorize]
+	↓
+ProjectsController
+	↓
+Database
+```
+
+### Swagger tests
+
+The JWT flow was tested through Swagger:
+
+1. `GET /api/Projects` without a JWT returned `401 Unauthorized`.
+2. Login with invalid credentials returned `401 Unauthorized`.
+3. Login with valid demo credentials returned `200 OK` and generated a JWT.
+4. The token was entered in Swagger's **Authorize** dialog. Only the token was
+	 entered because Swagger adds the `Bearer` prefix automatically.
+5. `GET /api/Projects` with the valid JWT returned `200 OK` and project data.
+
+### Protecting secrets
+
+The current username and password are hard-coded only for learning purposes.
+The JWT signing key in `appsettings.json` is also a development-only demo key.
+Real passwords, JWT signing keys, and other production secrets must not be
+committed to Git or source control. Production applications should use secure
+secret and configuration storage, such as environment variables, user secrets,
+or a managed secret store.
+
+### Stage 11 files
+
+Created:
+
+- `ProjectOps.Api/Models/LoginRequest.cs`
+- `ProjectOps.Api/Controllers/AuthController.cs`
+
+Modified:
+
+- `ProjectOps.Api/ProjectOps.Api.csproj`
+- `ProjectOps.Api/appsettings.json`
+- `ProjectOps.Api/Program.cs`
+- `ProjectOps.Api/Controllers/ProjectsController.cs`
+- `LEARNING_GUIDE.md`
