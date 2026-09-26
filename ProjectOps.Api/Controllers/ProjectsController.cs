@@ -95,7 +95,7 @@ public class ProjectsController : ControllerBase
     [Authorize(Roles = "Admin")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaxDocumentSize + 64 * 1024)]
-    public async Task<ActionResult<ProjectDto>> UploadDocument(int id, [FromForm] IFormFile? file)
+    public async Task<ActionResult<ProjectDto>> UploadDocument(int id, IFormFile? file)
     {
         if (file is null || file.Length == 0)
         {

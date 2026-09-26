@@ -1,8 +1,10 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Polly;
 using ProjectOps.Api.Data;
 using ProjectOps.Api.Exceptions;
 using ProjectOps.Api.Models;
@@ -55,6 +57,22 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddHttpClient<IExternalProjectService, ExternalProjectService>(client =>
+    {
+        var baseUrl = builder.Configuration["ResilienceDemo:BaseUrl"]
+            ?? throw new InvalidOperationException("ResilienceDemo:BaseUrl is not configured.");
+        client.BaseAddress = new Uri(baseUrl);
+        client.Timeout = TimeSpan.FromSeconds(5);
+    })
+    .AddResilienceHandler("external-project-retry", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 2,
+            Delay = TimeSpan.FromMilliseconds(200),
+            BackoffType = Polly.DelayBackoffType.Constant
+        });
+    });
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("BlazorClient", policy =>
