@@ -509,3 +509,109 @@ Existing database row updated
 
 - `ProjectOps.Api/Controllers/ProjectsController.cs`
 - `LEARNING_GUIDE.md`
+
+## Stage 9 - Global Exception Handling
+
+### What is an exception?
+
+An exception is a problem that happens while the application is running. For
+example, a database operation might fail or code might try to use something
+that is not available.
+
+### Expected errors and unexpected errors
+
+An expected error is a normal situation that the application can handle. For
+example, requesting a project that does not exist can return `404 Not Found`,
+and sending invalid data can return `400 Bad Request`.
+
+An unexpected error is a problem that the application did not expect. It
+should be handled safely without exposing technical details to the user.
+
+### 400 Bad Request and 500 Internal Server Error
+
+`400 Bad Request` means the client sent a request that the API cannot accept.
+For example, a request can fail validation because a required field is empty.
+
+`500 Internal Server Error` means the server encountered an unexpected problem
+while processing an otherwise valid request.
+
+### What is global exception handling?
+
+Global exception handling is one central place that handles unexpected errors
+for the whole API. ProjectOps uses `GlobalExceptionHandler` instead of putting
+repetitive `try`/`catch` blocks in every controller action.
+
+### What is middleware?
+
+Middleware is code in the ASP.NET Core request pipeline. Each middleware can
+inspect or change a request and response. The exception-handling middleware
+wraps the rest of the pipeline so it can handle exceptions thrown by
+controllers or database operations.
+
+### What does IExceptionHandler do?
+
+`IExceptionHandler` is an ASP.NET Core interface for handling exceptions in a
+centralized way. `GlobalExceptionHandler` implements it, changes the response
+status to `500`, and writes a safe error response.
+
+### What is ProblemDetails?
+
+`ProblemDetails` is a standard JSON format for describing an HTTP API error.
+It gives the client a predictable response without returning the server's
+stack trace or private implementation details.
+
+### Why centralize exception handling?
+
+Centralizing exception handling keeps controller actions simple and makes the
+API's unexpected-error response consistent. It also avoids copying the same
+`try`/`catch` code into every GET, POST, PUT, and DELETE action.
+
+### Why not expose stack traces?
+
+Stack traces and exception messages can reveal database names, file paths,
+configuration, or other internal details. Those details help developers
+diagnose problems but should not be sent to API users. The server can keep
+technical details in its internal diagnostics while the client receives a
+simple message:
+
+```text
+An unexpected error occurred while processing the request.
+```
+
+### Exception flow in ProjectOps
+
+```text
+Request
+	↓
+Controller
+	↓
+Service/EF Core operation
+	↓
+Unexpected Exception
+	↓
+Exception Handling Middleware
+	↓
+GlobalExceptionHandler
+	↓
+ProblemDetails
+	↓
+500 Internal Server Error
+```
+
+The exception-handling middleware is registered early in the pipeline. This
+allows it to observe exceptions from the controller and the operations that
+the controller calls. Validation errors still use the normal ASP.NET Core
+`400 Bad Request` behavior; the global handler is for unexpected exceptions.
+
+### Stage 9 files
+
+Created:
+
+- `ProjectOps.Api/Exceptions/GlobalExceptionHandler.cs`
+
+Modified:
+
+- `ProjectOps.Api/Program.cs`
+- `ProjectOps.Api/Controllers/ProjectsController.cs` (temporary test route was
+	added for verification and then removed)
+- `LEARNING_GUIDE.md`

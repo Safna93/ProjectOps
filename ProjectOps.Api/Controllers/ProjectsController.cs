@@ -69,5 +69,11 @@ public class ProjectsController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpGet("test-error")]
+    public IActionResult TestError()
+    {
+        throw new Exception("Test exception");
+    }
       
     }

@@ -9,22 +9,28 @@
 <h1>Projects</h1>
 
 <EditForm Model="projectForm" OnValidSubmit="SaveProject">
+    <DataAnnotationsValidator />
+
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <label class="form-label" for="project-code">Project Code</label>
             <InputText id="project-code" class="form-control" @bind-Value="projectForm.ProjectCode" />
+            <ValidationMessage For="@(() => projectForm.ProjectCode)" />
         </div>
         <div class="col-md-3">
             <label class="form-label" for="project-name">Project Name</label>
             <InputText id="project-name" class="form-control" @bind-Value="projectForm.ProjectName" />
+            <ValidationMessage For="@(() => projectForm.ProjectName)" />
         </div>
         <div class="col-md-3">
             <label class="form-label" for="client-name">Client Name</label>
             <InputText id="client-name" class="form-control" @bind-Value="projectForm.ClientName" />
+            <ValidationMessage For="@(() => projectForm.ClientName)" />
         </div>
         <div class="col-md-3">
             <label class="form-label" for="status">Status</label>
             <InputText id="status" class="form-control" @bind-Value="projectForm.Status" />
+            <ValidationMessage For="@(() => projectForm.Status)" />
         </div>
     </div>
 
