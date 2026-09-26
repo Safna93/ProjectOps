@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using System.Text;
 using ProjectOps.Api.Dtos;
 using ProjectOps.Api.Services;
 
@@ -10,6 +12,7 @@ namespace ProjectOps.Api.Controllers;
 [Authorize]
 public class ProjectsController : ControllerBase
 {
+    private const long MaxDocumentSize = 5 * 1024 * 1024;
     private readonly IProjectService _projectService;
     private readonly ILogger<ProjectsController> _logger;
 
@@ -82,6 +85,64 @@ public class ProjectsController : ControllerBase
         _logger.LogInformation("Project deleted successfully. ProjectId: {ProjectId}", id);
 
         return NoContent();
+    }
+
+    [HttpPost("{id:int}/document")]
+    [Authorize(Roles = "Admin")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(MaxDocumentSize + 64 * 1024)]
+    public async Task<ActionResult<ProjectDto>> UploadDocument(int id, [FromForm] IFormFile? file)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest("Select a non-empty PDF file.");
+        }
+
+        if (file.Length > MaxDocumentSize)
+        {
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, "The PDF must be 5 MB or smaller.");
+        }
+
+        if (!string.Equals(Path.GetExtension(file.FileName), ".pdf", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase) ||
+            !await HasPdfSignatureAsync(file))
+        {
+            return BadRequest("Only PDF files are allowed.");
+        }
+
+        var project = await _projectService.UploadDocumentAsync(id, file);
+        if (project is null)
+        {
+            return NotFound();
+        }
+
+        _logger.LogInformation(
+            "Project document uploaded. ProjectId: {ProjectId}, FileName: {FileName}",
+            id,
+            project.DocumentFileName);
+
+        return Ok(project);
+    }
+
+    [HttpGet("{id:int}/document")]
+    public async Task<IActionResult> DownloadDocument(int id)
+    {
+        var document = await _projectService.GetDocumentAsync(id);
+        if (document is null)
+        {
+            return NotFound();
+        }
+
+        return PhysicalFile(document.Value.PhysicalPath, "application/pdf", document.Value.FileName);
+    }
+
+    private static async Task<bool> HasPdfSignatureAsync(IFormFile file)
+    {
+        await using var stream = file.OpenReadStream();
+        var signature = new byte[5];
+        var bytesRead = await stream.ReadAsync(signature.AsMemory());
+
+        return bytesRead == signature.Length && Encoding.ASCII.GetString(signature) == "%PDF-";
     }
 
     [HttpGet("test-error")]

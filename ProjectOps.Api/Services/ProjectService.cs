@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using ProjectOps.Api.Data;
 using ProjectOps.Api.Dtos;
 using ProjectOps.Api.Models;
@@ -8,10 +10,12 @@ namespace ProjectOps.Api.Services;
 public class ProjectService : IProjectService
 {
     private readonly AppDbContext _dbContext;
+    private readonly IWebHostEnvironment _environment;
 
-    public ProjectService(AppDbContext dbContext)
+    public ProjectService(AppDbContext dbContext, IWebHostEnvironment environment)
     {
         _dbContext = dbContext;
+        _environment = environment;
     }
 
     public async Task<IReadOnlyList<ProjectDto>> GetAllAsync()
@@ -84,6 +88,76 @@ public class ProjectService : IProjectService
         return true;
     }
 
+    public async Task<ProjectDto?> UploadDocumentAsync(int id, IFormFile file)
+    {
+        var project = await _dbContext.Projects.FindAsync(id);
+        if (project is null)
+        {
+            return null;
+        }
+
+        var uploadDirectory = Path.Combine(_environment.ContentRootPath, "Uploads", "Projects");
+        Directory.CreateDirectory(uploadDirectory);
+
+        var storedName = $"{Guid.NewGuid():N}.pdf";
+        var storedPath = Path.Combine(uploadDirectory, storedName);
+        var previousStoredName = project.DocumentStoredName;
+
+        await using (var fileStream = new FileStream(
+            storedPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None))
+        {
+            await file.CopyToAsync(fileStream);
+        }
+
+        project.DocumentFileName = Path.GetFileName(file.FileName);
+        project.DocumentStoredName = storedName;
+
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+        catch
+        {
+            File.Delete(storedPath);
+            throw;
+        }
+
+        if (!string.IsNullOrWhiteSpace(previousStoredName))
+        {
+            var previousPath = Path.Combine(uploadDirectory, Path.GetFileName(previousStoredName));
+            if (File.Exists(previousPath))
+            {
+                File.Delete(previousPath);
+            }
+        }
+
+        return ToDto(project);
+    }
+
+    public async Task<(string PhysicalPath, string FileName)?> GetDocumentAsync(int id)
+    {
+        var project = await _dbContext.Projects
+            .AsNoTracking()
+            .FirstOrDefaultAsync(project => project.Id == id);
+
+        if (project is null ||
+            string.IsNullOrWhiteSpace(project.DocumentStoredName) ||
+            string.IsNullOrWhiteSpace(project.DocumentFileName))
+        {
+            return null;
+        }
+
+        var uploadDirectory = Path.Combine(_environment.ContentRootPath, "Uploads", "Projects");
+        var physicalPath = Path.Combine(uploadDirectory, Path.GetFileName(project.DocumentStoredName));
+
+        return File.Exists(physicalPath)
+            ? (physicalPath, project.DocumentFileName)
+            : null;
+    }
+
     private static ProjectDto ToDto(Project project)
     {
         return new ProjectDto
@@ -96,7 +170,8 @@ public class ProjectService : IProjectService
             CreatedAt = project.CreatedAt,
             CreatedBy = project.CreatedBy,
             UpdatedAt = project.UpdatedAt,
-            UpdatedBy = project.UpdatedBy
+            UpdatedBy = project.UpdatedBy,
+            DocumentFileName = project.DocumentFileName
         };
     }
 }

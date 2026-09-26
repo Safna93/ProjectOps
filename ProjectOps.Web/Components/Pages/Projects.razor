@@ -2,11 +2,13 @@
 @rendermode InteractiveServer
 @using System.Net.Http.Json
 @using System.Net.Http.Headers
+@using System.Net
 @using ProjectOps.Web.Models
 @using ProjectOps.Web.Services
 @inject HttpClient HttpClient
 @inject AuthService AuthService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Projects</PageTitle>
 
@@ -76,6 +78,7 @@ else
                 <th>Created At</th>
                 <th>Updated By</th>
                 <th>Updated At</th>
+                <th>Document</th>
                 @if (isAdmin)
                 {
                     <th>Actions</th>
@@ -94,6 +97,31 @@ else
                     <td>@(project.CreatedAt == default ? "-" : project.CreatedAt.ToString("yyyy-MM-dd HH:mm 'UTC'"))</td>
                     <td>@(string.IsNullOrWhiteSpace(project.UpdatedBy) ? "-" : project.UpdatedBy)</td>
                     <td>@(project.UpdatedAt is null ? "-" : project.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm 'UTC'"))</td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(project.DocumentFileName))
+                        {
+                            <div>@project.DocumentFileName</div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" @onclick="() => DownloadDocument(project)">
+                                Download / View
+                            </button>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+
+                        @if (isAdmin)
+                        {
+                            <div class="mt-2">
+                                <InputFile accept=".pdf,application/pdf" OnChange="@(args => SelectDocument(project.Id, args))" />
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-1"
+                                        disabled="@(!selectedDocuments.ContainsKey(project.Id))"
+                                        @onclick="() => UploadDocument(project.Id)">
+                                    Upload PDF
+                                </button>
+                            </div>
+                        }
+                    </td>
                     @if (isAdmin)
                     {
                         <td>
@@ -108,8 +136,10 @@ else
 }
 
 @code {
+    private const long MaxDocumentSize = 5 * 1024 * 1024;
     private List<Project>? projects;
     private Project projectForm = new();
+    private readonly Dictionary<int, IBrowserFile> selectedDocuments = new();
     private bool isEditMode;
     private bool isAdmin;
     private bool isSaving;
@@ -275,6 +305,107 @@ else
         }
     }
 
+    private void SelectDocument(int projectId, InputFileChangeEventArgs args)
+    {
+        selectedDocuments[projectId] = args.File;
+        errorMessage = null;
+    }
+
+    private async Task UploadDocument(int projectId)
+    {
+        if (!selectedDocuments.TryGetValue(projectId, out var file))
+        {
+            return;
+        }
+
+        errorMessage = null;
+
+        try
+        {
+            await using var fileStream = file.OpenReadStream(MaxDocumentSize);
+            using var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+
+            using var formContent = new MultipartFormDataContent();
+            formContent.Add(fileContent, "file", Path.GetFileName(file.Name));
+
+            using var request = await CreateAuthorizedRequest(
+                HttpMethod.Post,
+                $"api/projects/{projectId}/document",
+                formContent);
+            if (request is null)
+            {
+                return;
+            }
+
+            using var response = await HttpClient.SendAsync(request);
+            if (await RedirectIfUnauthorized(response))
+            {
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.RequestEntityTooLarge)
+            {
+                errorMessage = "The PDF must be 5 MB or smaller.";
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            selectedDocuments.Remove(projectId);
+            await LoadProjects();
+        }
+        catch (IOException)
+        {
+            errorMessage = "Select a PDF file that is 5 MB or smaller.";
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "The document could not be uploaded. Only PDF files are allowed.";
+        }
+    }
+
+    private async Task DownloadDocument(Project project)
+    {
+        errorMessage = null;
+
+        try
+        {
+            using var request = await CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"api/projects/{project.Id}/document");
+            if (request is null)
+            {
+                return;
+            }
+
+            using var response = await HttpClient.SendAsync(request);
+            if (await RedirectIfUnauthorized(response))
+            {
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                errorMessage = "The project document could not be found.";
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+                ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                ?? project.DocumentFileName
+                ?? "project-document.pdf";
+
+            await using var fileStream = await response.Content.ReadAsStreamAsync();
+            using var streamReference = new DotNetStreamReference(fileStream);
+            await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamReference);
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "The document could not be downloaded.";
+        }
+    }
+
     private void ResetForm()
     {
         projectForm = new Project();
@@ -286,6 +417,15 @@ else
         string requestUri,
         object? content = null)
     {
+        var httpContent = content is null ? null : JsonContent.Create(content);
+        return await CreateAuthorizedRequest(method, requestUri, httpContent);
+    }
+
+    private async Task<HttpRequestMessage?> CreateAuthorizedRequest(
+        HttpMethod method,
+        string requestUri,
+        HttpContent? content)
+    {
         var token = await AuthService.GetTokenAsync();
         if (string.IsNullOrWhiteSpace(token))
         {
@@ -296,10 +436,7 @@ else
         var request = new HttpRequestMessage(method, requestUri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        if (content is not null)
-        {
-            request.Content = JsonContent.Create(content);
-        }
+        request.Content = content;
 
         return request;
     }

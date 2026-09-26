@@ -19,4 +19,6 @@ public class ProjectDto
     public DateTime? UpdatedAt { get; set; }
 
     public string? UpdatedBy { get; set; }
+
+    public string? DocumentFileName { get; set; }
 }
