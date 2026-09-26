@@ -266,6 +266,107 @@ Modified:
 - `ProjectOps.Api/Controllers/ProjectsController.cs`
 - `LEARNING_GUIDE.md`
 
+## Stage 14 - Configuration and Environments
+
+### What is configuration?
+
+Configuration is information an application reads while it starts or runs.
+Examples include API addresses, database connection strings, logging levels,
+and JWT settings. Keeping these values outside application code makes it
+possible to use the same code in different environments.
+
+### Why avoid hard-coded API URLs?
+
+A hard-coded URL means the API address is written directly in a page or C#
+file. That makes it harder to switch from a developer's computer to a test or
+production environment. ProjectOps now reads the API address from
+configuration, so the pages can use relative paths such as `api/projects`.
+
+### IConfiguration and appsettings files
+
+`IConfiguration` is the ASP.NET Core service used to read configuration
+values. In ProjectOps, `Program.cs` reads `ApiSettings:BaseUrl` and uses it to
+configure `HttpClient`.
+
+`appsettings.json` contains general settings. ASP.NET Core also loads an
+environment-specific file, such as `appsettings.Development.json` or
+`appsettings.Production.json`. Values in an environment-specific file override
+the same values from `appsettings.json`.
+
+The Development API address is stored in
+`ProjectOps.Web/appsettings.Development.json`:
+
+```json
+{
+	"ApiSettings": {
+		"BaseUrl": "http://localhost:5103/"
+	}
+}
+```
+
+### ASPNETCORE_ENVIRONMENT
+
+`ASPNETCORE_ENVIRONMENT` tells ASP.NET Core which environment the application
+is running in. For example, when its value is `Development`, ASP.NET Core
+loads `appsettings.Development.json`. If the value is `Production`, it loads
+`appsettings.Production.json` instead.
+
+### Development, UAT/Staging, and Production
+
+- **Development** is where developers run and test the application on their
+	computers.
+- **UAT** (User Acceptance Testing), often called **Staging**, is a test
+	environment where people check a release before production.
+- **Production** is the live environment used by real users.
+
+Each environment can provide its own API base URL. Production URLs are not
+invented or included as examples here; configure the real address when it is
+known, for example through the `ApiSettings__BaseUrl` environment variable.
+
+```text
+Development:
+Blazor -> http://localhost:5103
+
+UAT:
+Blazor -> UAT API URL
+
+Production:
+Blazor -> Production API URL
+
+Same application code.
+Different configuration.
+```
+
+### HttpClient BaseAddress and relative URLs
+
+`HttpClient.BaseAddress` is the starting address used for requests. ProjectOps
+sets it once in `ProjectOps.Web/Program.cs` from `ApiSettings:BaseUrl`.
+Components then use relative URLs, such as `api/Auth/login` and `api/projects`.
+The HTTP client combines the relative path with its configured base address.
+
+### API configuration and secrets
+
+The API already reads its SQL Server connection string, JWT settings, and
+logging levels from configuration. These are configuration concerns; this
+stage does not restructure the API or change how JWT or the database works.
+
+Configuration is not automatically secret. `appsettings.json` and other
+settings files may be committed to Git. Production secrets, such as database
+passwords, JWT signing keys, and API keys, should not normally be committed to
+source control. Use environment variables or a secure secret store to provide
+those values in a real deployment. ProjectOps does not add a secret store in
+this stage.
+
+### Stage 14 files
+
+Modified:
+
+- `ProjectOps.Web/Program.cs`
+- `ProjectOps.Web/appsettings.Development.json`
+- `ProjectOps.Web/Components/Pages/Login.razor`
+- `ProjectOps.Web/Components/Pages/Projects.razor`
+- `LEARNING_GUIDE.md`
+
 ## Stage 12 - Blazor Login and JWT Integration
 
 ### Why does Blazor need a login page?

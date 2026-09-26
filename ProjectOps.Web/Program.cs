@@ -7,7 +7,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddScoped<HttpClient>();
+var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"]
+    ?? throw new InvalidOperationException("ApiSettings:BaseUrl is not configured.");
+
+builder.Services.AddScoped(_ => new HttpClient
+{
+    BaseAddress = new Uri(apiBaseUrl, UriKind.Absolute)
+});
 builder.Services.AddScoped<AuthService>();
 
 var app = builder.Build();

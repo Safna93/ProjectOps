@@ -129,7 +129,7 @@ else
     {
         try
         {
-            using var request = await CreateAuthorizedRequest(HttpMethod.Get, "http://localhost:5103/api/projects");
+            using var request = await CreateAuthorizedRequest(HttpMethod.Get, "api/projects");
             if (request is null)
             {
                 return;
@@ -164,7 +164,7 @@ else
             {
                 using var request = await CreateAuthorizedRequest(
                     HttpMethod.Put,
-                    $"http://localhost:5103/api/projects/{projectForm.Id}",
+                    $"api/projects/{projectForm.Id}",
                     projectForm);
                 if (request is null)
                 {
@@ -177,7 +177,7 @@ else
             {
                 using var request = await CreateAuthorizedRequest(
                     HttpMethod.Post,
-                    "http://localhost:5103/api/projects",
+                    "api/projects",
                     projectForm);
                 if (request is null)
                 {
@@ -228,7 +228,7 @@ else
         {
             using var request = await CreateAuthorizedRequest(
                 HttpMethod.Delete,
-                $"http://localhost:5103/api/projects/{id}");
+                $"api/projects/{id}");
             if (request is null)
             {
                 return;

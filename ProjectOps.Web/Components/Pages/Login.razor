@@ -46,7 +46,7 @@
         try
         {
             var response = await HttpClient.PostAsJsonAsync(
-          "http://localhost:5103/api/Auth/login", loginRequest);
+                                "api/Auth/login", loginRequest);
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 errorMessage = "Invalid username or password.";
