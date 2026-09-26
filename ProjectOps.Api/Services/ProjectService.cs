@@ -18,11 +18,28 @@ public class ProjectService : IProjectService
         _environment = environment;
     }
 
-    public async Task<IReadOnlyList<ProjectDto>> GetAllAsync()
+    public async Task<IReadOnlyList<ProjectDto>> GetAllAsync(string? search = null, string? status = null)
     {
-        var projects = await _dbContext.Projects
+        IQueryable<Project> query = _dbContext.Projects
             .AsNoTracking()
-            .ToListAsync();
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = search.Trim();
+            query = query.Where(project =>
+                project.ProjectCode.Contains(searchTerm) ||
+                project.ProjectName.Contains(searchTerm) ||
+                project.ClientName.Contains(searchTerm));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var statusFilter = status.Trim();
+            query = query.Where(project => project.Status == statusFilter);
+        }
+
+        var projects = await query.ToListAsync();
 
         return projects.Select(ToDto).ToList();
     }

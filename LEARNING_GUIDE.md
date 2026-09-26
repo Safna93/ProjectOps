@@ -752,6 +752,97 @@ Existing database row updated
 - `ProjectOps.Api/Controllers/ProjectsController.cs`
 - `LEARNING_GUIDE.md`
 
+## Stage 18 - Search and Filtering
+
+### What are query parameters?
+
+Query parameters are optional values added after `?` in a URL. They let a
+client ask the API for a particular subset of data without changing the route.
+Multiple values are separated by `&`.
+
+Examples:
+
+```text
+GET /api/projects?search=website
+GET /api/projects?status=Active
+GET /api/projects?search=website&status=Active
+```
+
+If both values are empty or omitted, the API returns all projects as before.
+
+### What is IQueryable?
+
+`IQueryable<Project>` represents a query that EF Core can still translate into
+SQL. It describes what data is needed without immediately loading the rows.
+
+### Why build the query before ToListAsync()?
+
+The service starts with the Projects table and conditionally adds filters using
+`Where()`. Only after all filters are added does `ToListAsync()` execute the
+query. EF Core sends the filtering work to SQL Server, so the API does not first
+load every project into memory.
+
+### How Where() adds filtering conditions
+
+When `search` is provided, `Where()` matches the text in `ProjectCode`,
+`ProjectName`, or `ClientName`. When `status` is provided, another `Where()`
+keeps projects whose status matches that value. If a filter is blank, that
+condition is not added.
+
+### Server-side vs client-side filtering
+
+Server-side filtering sends search and status values to the API, and SQL Server
+returns only matching rows. Client-side filtering would download every project
+first and search the full list in Blazor. Server-side filtering is more
+efficient as the data grows.
+
+### Why use AsNoTracking()?
+
+`AsNoTracking()` tells EF Core that the returned projects are for reading only.
+EF Core does not need to track changes to them, which is a good fit for this
+GET request.
+
+### Complete search and filter flow
+
+```text
+Blazor search and status controls
+	↓
+GET /api/projects?search=website&status=Active
+	↓
+ProjectsController
+	↓
+IProjectService
+	↓
+ProjectService builds IQueryable filters
+	↓
+ToListAsync()
+	↓
+EF Core sends filtered query to SQL Server
+	↓
+Matching projects become DTOs
+	↓
+API returns JSON
+	↓
+Blazor displays the filtered list
+```
+
+### Interview explanation
+
+> In this project, I implemented server-side project search and filtering
+> using optional query parameters and EF Core LINQ. I built the query using
+> `IQueryable`, conditionally applied `Where` filters, and executed it
+> asynchronously using `ToListAsync`.
+
+### Stage 18 files
+
+Modified:
+
+- `ProjectOps.Api/Controllers/ProjectsController.cs`
+- `ProjectOps.Api/Services/IProjectService.cs`
+- `ProjectOps.Api/Services/ProjectService.cs`
+- `ProjectOps.Web/Components/Pages/Projects.razor`
+- `LEARNING_GUIDE.md`
+
 ## Stage 8 - Model Validation
 
 Validation checks whether input is acceptable before the application saves it.

@@ -17,6 +17,23 @@
     <button type="button" class="btn btn-outline-secondary" @onclick="Logout">Logout</button>
 </div>
 
+<div class="row g-3 align-items-end mb-4">
+    <div class="col-md-5">
+        <label class="form-label" for="project-search">Search</label>
+        <InputText id="project-search" class="form-control" @bind-Value="searchText"
+                   placeholder="Project code, name, or client" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label" for="project-status-filter">Status</label>
+        <InputText id="project-status-filter" class="form-control" @bind-Value="statusFilter"
+                   placeholder="Exact status, for example Active" />
+    </div>
+    <div class="col-md-auto">
+        <button type="button" class="btn btn-primary me-2" @onclick="ApplyFilters">Search</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="ClearFilters">Clear</button>
+    </div>
+</div>
+
 @if (isAdmin)
 {
     <EditForm Model="projectForm" OnValidSubmit="SaveProject">
@@ -144,6 +161,8 @@ else
     private bool isAdmin;
     private bool isSaving;
     private string? errorMessage;
+    private string searchText = string.Empty;
+    private string statusFilter = string.Empty;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -167,7 +186,22 @@ else
     {
         try
         {
-            using var request = await CreateAuthorizedRequest(HttpMethod.Get, "api/projects");
+            var queryParameters = new List<string>();
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                queryParameters.Add($"search={Uri.EscapeDataString(searchText.Trim())}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                queryParameters.Add($"status={Uri.EscapeDataString(statusFilter.Trim())}");
+            }
+
+            var requestUri = queryParameters.Count == 0
+                ? "api/projects"
+                : $"api/projects?{string.Join("&", queryParameters)}";
+
+            using var request = await CreateAuthorizedRequest(HttpMethod.Get, requestUri);
             if (request is null)
             {
                 return;
@@ -187,6 +221,18 @@ else
             projects = [];
             errorMessage = "The projects could not be loaded from the API.";
         }
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadProjects();
+    }
+
+    private async Task ClearFilters()
+    {
+        searchText = string.Empty;
+        statusFilter = string.Empty;
+        await LoadProjects();
     }
 
     private async Task SaveProject()
