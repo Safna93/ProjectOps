@@ -33,6 +33,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<Project>> CreateProject(Project project)
     {
         _dbContext.Projects.Add(project);
@@ -47,6 +48,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateProject(int id, Project project)
     {
         var existingProject = await _dbContext.Projects.FindAsync(id);
@@ -69,6 +71,7 @@ public class ProjectsController : ControllerBase
         return NoContent();
     }
      [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteProject(int id)
     {
         var existingProject = await _dbContext.Projects.FindAsync(id);

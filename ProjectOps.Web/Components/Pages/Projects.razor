@@ -15,41 +15,44 @@
     <button type="button" class="btn btn-outline-secondary" @onclick="Logout">Logout</button>
 </div>
 
-<EditForm Model="projectForm" OnValidSubmit="SaveProject">
-    <DataAnnotationsValidator />
+@if (isAdmin)
+{
+    <EditForm Model="projectForm" OnValidSubmit="SaveProject">
+        <DataAnnotationsValidator />
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <label class="form-label" for="project-code">Project Code</label>
-            <InputText id="project-code" class="form-control" @bind-Value="projectForm.ProjectCode" />
-            <ValidationMessage For="@(() => projectForm.ProjectCode)" />
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label" for="project-code">Project Code</label>
+                <InputText id="project-code" class="form-control" @bind-Value="projectForm.ProjectCode" />
+                <ValidationMessage For="@(() => projectForm.ProjectCode)" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="project-name">Project Name</label>
+                <InputText id="project-name" class="form-control" @bind-Value="projectForm.ProjectName" />
+                <ValidationMessage For="@(() => projectForm.ProjectName)" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="client-name">Client Name</label>
+                <InputText id="client-name" class="form-control" @bind-Value="projectForm.ClientName" />
+                <ValidationMessage For="@(() => projectForm.ClientName)" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="status">Status</label>
+                <InputText id="status" class="form-control" @bind-Value="projectForm.Status" />
+                <ValidationMessage For="@(() => projectForm.Status)" />
+            </div>
         </div>
-        <div class="col-md-3">
-            <label class="form-label" for="project-name">Project Name</label>
-            <InputText id="project-name" class="form-control" @bind-Value="projectForm.ProjectName" />
-            <ValidationMessage For="@(() => projectForm.ProjectName)" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="client-name">Client Name</label>
-            <InputText id="client-name" class="form-control" @bind-Value="projectForm.ClientName" />
-            <ValidationMessage For="@(() => projectForm.ClientName)" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="status">Status</label>
-            <InputText id="status" class="form-control" @bind-Value="projectForm.Status" />
-            <ValidationMessage For="@(() => projectForm.Status)" />
-        </div>
-    </div>
 
-    <button type="submit" class="btn btn-primary" disabled="@isSaving">
-        @(isEditMode ? "Update Project" : "Create Project")
-    </button>
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @(isEditMode ? "Update Project" : "Create Project")
+        </button>
 
-    @if (isEditMode)
-    {
-        <button type="button" class="btn btn-secondary ms-2" @onclick="ResetForm">Cancel</button>
-    }
-</EditForm>
+        @if (isEditMode)
+        {
+            <button type="button" class="btn btn-secondary ms-2" @onclick="ResetForm">Cancel</button>
+        }
+    </EditForm>
+}
 
 @if (!string.IsNullOrWhiteSpace(errorMessage))
 {
@@ -69,7 +72,10 @@ else
                 <th>Project Name</th>
                 <th>Client Name</th>
                 <th>Status</th>
-                <th>Actions</th>
+                @if (isAdmin)
+                {
+                    <th>Actions</th>
+                }
             </tr>
         </thead>
         <tbody>
@@ -80,10 +86,13 @@ else
                     <td>@project.ProjectName</td>
                     <td>@project.ClientName</td>
                     <td>@project.Status</td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-outline-primary me-2" @onclick="() => EditProject(project)">Edit</button>
-                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => DeleteProject(project.Id)">Delete</button>
-                    </td>
+                    @if (isAdmin)
+                    {
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2" @onclick="() => EditProject(project)">Edit</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => DeleteProject(project.Id)">Delete</button>
+                        </td>
+                    }
                 </tr>
             }
         </tbody>
@@ -94,6 +103,7 @@ else
     private List<Project>? projects;
     private Project projectForm = new();
     private bool isEditMode;
+    private bool isAdmin;
     private bool isSaving;
     private string? errorMessage;
 
@@ -110,6 +120,7 @@ else
             return;
         }
 
+        isAdmin = await AuthService.IsAdminAsync();
         await LoadProjects();
         StateHasChanged();
     }

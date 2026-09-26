@@ -62,7 +62,7 @@
                 return;
             }
 
-            await AuthService.StoreTokenAsync(loginResponse.Token);
+            await AuthService.StoreTokenAsync(loginResponse.Token, loginResponse.Role);
             NavigationManager.NavigateTo("/projects");
         }
         catch (HttpRequestException)

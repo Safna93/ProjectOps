@@ -12,8 +12,6 @@ namespace ProjectOps.Api.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private const string DemoUsername = "admin";
-    private const string DemoPassword = "ProjectOps123!";
     private readonly IConfiguration _configuration;
 
     public AuthController(IConfiguration configuration)
@@ -25,7 +23,14 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login(LoginRequest request)
     {
-        if (request.Username != DemoUsername || request.Password != DemoPassword)
+        var role = request.Username switch
+        {
+            "admin" when request.Password == "ProjectOps123!" => "Admin",
+            "user" when request.Password == "User123!" => "User",
+            _ => null
+        };
+
+        if (role is null)
         {
             return Unauthorized();
         }
@@ -38,7 +43,8 @@ public class AuthController : ControllerBase
 
         var claims = new[]
         {
-            new Claim(ClaimTypes.Name, request.Username)
+            new Claim(ClaimTypes.Name, request.Username),
+            new Claim(ClaimTypes.Role, role)
         };
 
         var token = new JwtSecurityToken(
@@ -51,7 +57,8 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             token = new JwtSecurityTokenHandler().WriteToken(token),
-            expiresAt = expires
+            expiresAt = expires,
+            role
         });
     }
 }
