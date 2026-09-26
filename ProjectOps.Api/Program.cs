@@ -6,6 +6,7 @@ using Microsoft.OpenApi;
 using ProjectOps.Api.Data;
 using ProjectOps.Api.Exceptions;
 using ProjectOps.Api.Models;
+using ProjectOps.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,6 +54,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("BlazorClient", policy =>

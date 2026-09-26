@@ -1,11 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ProjectOps.Web.Models;
+namespace ProjectOps.Api.Dtos;
 
-public class Project
+public class UpdateProjectDto
 {
-    public int Id { get; set; }
-
     [Required]
     [StringLength(20)]
     public string ProjectCode { get; set; } = string.Empty;
@@ -21,12 +19,4 @@ public class Project
     [Required]
     [StringLength(50)]
     public string Status { get; set; } = string.Empty;
-
-    public DateTime CreatedAt { get; set; }
-
-    public string? CreatedBy { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
-
-    public string? UpdatedBy { get; set; }
 }

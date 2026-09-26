@@ -72,6 +72,10 @@ else
                 <th>Project Name</th>
                 <th>Client Name</th>
                 <th>Status</th>
+                <th>Created By</th>
+                <th>Created At</th>
+                <th>Updated By</th>
+                <th>Updated At</th>
                 @if (isAdmin)
                 {
                     <th>Actions</th>
@@ -86,6 +90,10 @@ else
                     <td>@project.ProjectName</td>
                     <td>@project.ClientName</td>
                     <td>@project.Status</td>
+                    <td>@(string.IsNullOrWhiteSpace(project.CreatedBy) ? "-" : project.CreatedBy)</td>
+                    <td>@(project.CreatedAt == default ? "-" : project.CreatedAt.ToString("yyyy-MM-dd HH:mm 'UTC'"))</td>
+                    <td>@(string.IsNullOrWhiteSpace(project.UpdatedBy) ? "-" : project.UpdatedBy)</td>
+                    <td>@(project.UpdatedAt is null ? "-" : project.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm 'UTC'"))</td>
                     @if (isAdmin)
                     {
                         <td>
@@ -165,7 +173,13 @@ else
                 using var request = await CreateAuthorizedRequest(
                     HttpMethod.Put,
                     $"api/projects/{projectForm.Id}",
-                    projectForm);
+                    new
+                    {
+                        projectForm.ProjectCode,
+                        projectForm.ProjectName,
+                        projectForm.ClientName,
+                        projectForm.Status
+                    });
                 if (request is null)
                 {
                     return;
@@ -178,7 +192,13 @@ else
                 using var request = await CreateAuthorizedRequest(
                     HttpMethod.Post,
                     "api/projects",
-                    projectForm);
+                    new
+                    {
+                        projectForm.ProjectCode,
+                        projectForm.ProjectName,
+                        projectForm.ClientName,
+                        projectForm.Status
+                    });
                 if (request is null)
                 {
                     return;

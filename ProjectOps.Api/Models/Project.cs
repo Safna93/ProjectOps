@@ -21,4 +21,13 @@ public class Project
     [Required]
     [StringLength(50)]
     public string Status { get; set; } = string.Empty;
+
+    public DateTime CreatedAt { get; set; }
+
+    [Required]
+    public string CreatedBy { get; set; } = string.Empty;
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public string? UpdatedBy { get; set; }
 }
