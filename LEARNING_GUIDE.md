@@ -510,6 +510,31 @@ Existing database row updated
 - `ProjectOps.Api/Controllers/ProjectsController.cs`
 - `LEARNING_GUIDE.md`
 
+## Stage 8 - Model Validation
+
+Validation checks whether input is acceptable before the application saves it.
+ProjectOps uses Data Annotations on the `Project` model. `[Required]` means a
+value must be provided, and `[StringLength]` limits how long a text value can
+be.
+
+The API model validates requests on POST and PUT. Because the controller uses
+`[ApiController]`, ASP.NET Core automatically returns `400 Bad Request` with
+validation information when a request is invalid.
+
+The Blazor Projects form uses `<DataAnnotationsValidator />` to apply the same
+rules before sending a request. Each `<ValidationMessage>` displays the error
+for its related field. Frontend validation improves the user experience, but
+backend validation is still required because API clients can bypass the UI.
+
+### Stage 8 files
+
+Modified:
+
+- `ProjectOps.Api/Models/Project.cs`
+- `ProjectOps.Web/Models/Project.cs`
+- `ProjectOps.Web/Components/Pages/Projects.razor`
+- `LEARNING_GUIDE.md`
+
 ## Stage 9 - Global Exception Handling
 
 ### What is an exception?
@@ -518,7 +543,7 @@ An exception is a problem that happens while the application is running. For
 example, a database operation might fail or code might try to use something
 that is not available.
 
-### Expected errors and unexpected errors
+### Expected errors and unexpected erors
 
 An expected error is a normal situation that the application can handle. For
 example, requesting a project that does not exist can return `404 Not Found`,
@@ -614,4 +639,100 @@ Modified:
 - `ProjectOps.Api/Program.cs`
 - `ProjectOps.Api/Controllers/ProjectsController.cs` (temporary test route was
 	added for verification and then removed)
+- `LEARNING_GUIDE.md`
+
+## Stage 10 - Structured Logging
+
+### What is logging?
+
+Logging means writing useful information about the application while it runs.
+Logs help developers understand what the application is doing and diagnose
+problems without showing technical details to users.
+
+### What is ILogger<T>?
+
+`ILogger<T>` is the built-in .NET logging service. The `T` identifies the class
+that is writing the log, such as `ILogger<ProjectsController>` or
+`ILogger<GlobalExceptionHandler>`.
+
+### How is ILogger injected?
+
+ASP.NET Core provides `ILogger<T>` through dependency injection. The
+constructor of `ProjectsController` receives `ILogger<ProjectsController>`,
+and `GlobalExceptionHandler` receives `ILogger<GlobalExceptionHandler>`.
+Neither class needs to create a logger manually.
+
+### Logging methods
+
+- `LogInformation` records an important normal operation, such as a project
+	being created.
+- `LogWarning` records an unusual but expected situation, such as a requested
+	project not being found.
+- `LogError` records an unexpected failure and can include the exception.
+
+### Standard log levels
+
+- `Trace`: very detailed diagnostic information.
+- `Debug`: information useful while debugging.
+- `Information`: normal important application operations.
+- `Warning`: an unusual situation that does not stop the application.
+- `Error`: an operation failed or an unexpected exception occurred.
+- `Critical`: a serious failure that may stop the application.
+
+ProjectOps uses `Information` for successful CRUD operations, `Warning` when a
+project is not found, and `Error` for unexpected exceptions.
+
+### What is structured logging?
+
+Structured logging stores values separately from the message text. For
+example:
+
+```csharp
+_logger.LogInformation(
+		"Project created successfully. ProjectId: {ProjectId}, ProjectCode: {ProjectCode}",
+		project.Id,
+		project.ProjectCode);
+```
+
+`{ProjectId}` and `{ProjectCode}` are named placeholders. Logging systems can
+search and filter those values more easily than text built by string
+concatenation.
+
+### What should not be logged?
+
+Do not log passwords, tokens, connection strings, private personal data, or
+other sensitive information. Logs can be stored and viewed by developers or
+operations staff, so they must be treated carefully.
+
+### What developers see and users see
+
+When an unexpected exception occurs, developers see the actual exception and
+stack trace in the application logs. The client receives only a safe
+`ProblemDetails` response with a general message and HTTP `500` status. This
+keeps useful diagnostic information on the server without exposing internal
+details to users.
+
+### Exception logging flow
+
+```text
+Unexpected exception
+	↓
+GlobalExceptionHandler
+	↓
+ILogger logs actual exception for developers
+	↓
+ProblemDetails returns safe message to client
+	↓
+HTTP 500
+```
+
+When running locally, these logs appear in the terminal or Debug output where
+`dotnet run` or the VS Code debugger is running.
+
+### Stage 10 files
+
+Modified:
+
+- `ProjectOps.Api/Controllers/ProjectsController.cs`
+- `ProjectOps.Api/Exceptions/GlobalExceptionHandler.cs`
 - `LEARNING_GUIDE.md`

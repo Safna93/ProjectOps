@@ -10,15 +10,19 @@ namespace ProjectOps.Api.Controllers;
 public class ProjectsController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
+    private readonly ILogger<ProjectsController> _logger;
 
-    public ProjectsController(AppDbContext dbContext)
+    public ProjectsController(AppDbContext dbContext, ILogger<ProjectsController> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Project>>> GetProjects()
     {
+        _logger.LogInformation("Retrieving projects.");
+
         var projects = await _dbContext.Projects
             .AsNoTracking()
             .ToListAsync();
@@ -32,6 +36,11 @@ public class ProjectsController : ControllerBase
         _dbContext.Projects.Add(project);
         await _dbContext.SaveChangesAsync();
 
+        _logger.LogInformation(
+            "Project created successfully. ProjectId: {ProjectId}, ProjectCode: {ProjectCode}",
+            project.Id,
+            project.ProjectCode);
+
         return CreatedAtAction(nameof(GetProjects), null, project);
     }
 
@@ -42,6 +51,7 @@ public class ProjectsController : ControllerBase
 
         if (existingProject is null)
         {
+            _logger.LogWarning("Project not found for update. ProjectId: {ProjectId}", id);
             return NotFound();
         }
 
@@ -52,6 +62,8 @@ public class ProjectsController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
+        _logger.LogInformation("Project updated successfully. ProjectId: {ProjectId}", id);
+
         return NoContent();
     }
      [HttpDelete("{id}")]
@@ -61,11 +73,14 @@ public class ProjectsController : ControllerBase
 
         if (existingProject is null)
         {
+            _logger.LogWarning("Project not found for deletion. ProjectId: {ProjectId}", id);
             return NotFound();
         }
 
         _dbContext.Projects.Remove(existingProject);
         await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Project deleted successfully. ProjectId: {ProjectId}", id);
 
         return NoContent();
     }
@@ -73,7 +88,6 @@ public class ProjectsController : ControllerBase
     [HttpGet("test-error")]
     public IActionResult TestError()
     {
-        throw new Exception("Test exception");
+        throw new Exception("Test exception for Stage 10 verification.");
     }
-      
-    }
+}
