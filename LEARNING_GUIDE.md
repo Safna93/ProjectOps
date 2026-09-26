@@ -266,6 +266,147 @@ Modified:
 - `ProjectOps.Api/Controllers/ProjectsController.cs`
 - `LEARNING_GUIDE.md`
 
+## Stage 12 - Blazor Login and JWT Integration
+
+### Why does Blazor need a login page?
+
+Swagger was useful for testing the API manually, but a real frontend must
+perform the login itself. The Blazor login page sends the username and
+password to the API and receives the JWT that it needs for protected requests.
+
+### LoginRequest and login response
+
+The Blazor app sends a `LoginRequest` containing `Username` and `Password` to
+`POST http://localhost:5103/api/Auth/login`.
+
+The API returns a login response containing `Token` and `ExpiresAt`. The token
+is the JWT that the frontend sends with later Projects API requests.
+
+### What is AuthService?
+
+`AuthService` is a small frontend service that stores the current JWT in the
+browser's `sessionStorage`. It provides asynchronous operations to store the
+token, read the token, check whether a token exists, and log out through
+JavaScript interop.
+
+The service is registered with scoped lifetime for the Interactive Server
+Blazor application. The token is not stored in local storage, session storage,
+cookies, or a database. This keeps the learning example simple.
+
+### Why use sessionStorage?
+
+`sessionStorage` is browser-session storage. The token remains available while
+the user navigates between Blazor pages and survives a page refresh in the same
+browser tab. Closing the tab or browser session removes the token, so the user
+must log in again.
+
+This is appropriate for this learning project because it keeps the example
+simple while allowing the token to remain available during navigation.
+Production authentication and token storage require a deliberate security
+design, including careful decisions about token lifetime, storage, and
+protection against token theft.
+
+### How is the bearer token sent?
+
+Before each protected Projects API request, the Blazor page retrieves the JWT
+from `sessionStorage`, creates an `HttpRequestMessage`, and adds this header:
+
+```text
+Authorization: Bearer <token>
+```
+
+The page uses a separate request message for GET, POST, PUT, and DELETE. This
+avoids permanently changing `HttpClient.DefaultRequestHeaders` or adding
+duplicate authorization values.
+
+### Frontend authentication vs API authentication
+
+The Blazor frontend controls its page experience. It redirects to `/login`
+when there is no token and provides a Logout button that clears the in-memory
+token.
+
+The API is the real security boundary. `[Authorize]` remains on
+`ProjectsController`, and the API validates the JWT on every protected request.
+Frontend checks improve the user experience, but they cannot replace API
+authentication because clients can bypass the UI.
+
+### Login flow
+
+1. The user opens `/login` and enters a username and password.
+2. Blazor sends the credentials with `PostAsJsonAsync()`.
+3. Invalid credentials display `Invalid username or password.`.
+4. Valid credentials return a JWT and expiration time.
+5. `AuthService` stores the JWT in browser `sessionStorage`.
+6. Blazor navigates to `/projects`.
+
+### Logout flow
+
+When the user selects Logout, `AuthService` removes the JWT from
+`sessionStorage` and Blazor navigates to `/login`. Protected project requests
+cannot succeed until the user logs in again and receives a new token.
+
+### Complete Stage 12 request flow
+
+```text
+Login page
+	↓
+POST /api/Auth/login
+	↓
+AuthController
+	↓
+JWT returned
+	↓
+AuthService stores token in sessionStorage
+	↓
+Projects page
+	↓
+Authorization: Bearer <token>
+	↓
+Projects API
+	↓
+[Authorize] validates the token
+	↓
+ProjectsController
+	↓
+EF Core and SQL Server
+```
+
+### Stage 12 testing steps
+
+1. Start `ProjectOps.Api` and `ProjectOps.Web`.
+2. Open the Blazor `/projects` page without logging in. It redirects to
+	 `/login`.
+3. Enter invalid credentials. The page displays `Invalid username or
+	 password.`.
+4. Enter the valid learning credentials. The login request succeeds and the
+	 app navigates to `/projects`.
+5. Confirm the existing projects are displayed.
+6. Create a project, edit a project, and delete a project while logged in.
+7. Select Logout. The token is cleared and the app returns to `/login`.
+8. Log in again before using the protected Projects API.
+
+### Production note
+
+This sessionStorage token service is only for learning. Production applications
+need a deliberate and more robust token or session strategy, secure storage,
+token expiration handling, and protection against exposing credentials or
+tokens.
+
+### Stage 12 files
+
+Created:
+
+- `ProjectOps.Web/Models/LoginRequest.cs`
+- `ProjectOps.Web/Models/LoginResponse.cs`
+- `ProjectOps.Web/Services/AuthService.cs`
+- `ProjectOps.Web/Components/Pages/Login.razor`
+
+Modified:
+
+- `ProjectOps.Web/Program.cs`
+- `ProjectOps.Web/Components/Pages/Projects.razor`
+- `LEARNING_GUIDE.md`
+
 ## What is POST?
 
 POST is an HTTP method used to create new data. In this application, `POST

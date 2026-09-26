@@ -1,4 +1,5 @@
 using ProjectOps.Web.Components;
+using ProjectOps.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddScoped<HttpClient>();
+builder.Services.AddScoped<AuthService>();
 
 var app = builder.Build();
 
