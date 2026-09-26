@@ -391,8 +391,8 @@ token, read the token, check whether a token exists, and log out through
 JavaScript interop.
 
 The service is registered with scoped lifetime for the Interactive Server
-Blazor application. The token is not stored in local storage, session storage,
-cookies, or a database. This keeps the learning example simple.
+Blazor application. JavaScript interop lets it store the token in the current
+browser tab's `sessionStorage`; it is not stored in cookies or a database.
 
 ### Why use sessionStorage?
 
@@ -423,8 +423,8 @@ duplicate authorization values.
 ### Frontend authentication vs API authentication
 
 The Blazor frontend controls its page experience. It redirects to `/login`
-when there is no token and provides a Logout button that clears the in-memory
-token.
+when there is no token and provides a Logout button that clears the token from
+`sessionStorage`.
 
 The API is the real security boundary. `[Authorize]` remains on
 `ProjectsController`, and the API validates the JWT on every protected request.
