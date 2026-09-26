@@ -18,7 +18,11 @@ public class ProjectService : IProjectService
         _environment = environment;
     }
 
-    public async Task<IReadOnlyList<ProjectDto>> GetAllAsync(string? search = null, string? status = null)
+    public async Task<IReadOnlyList<ProjectDto>> GetAllAsync(
+        string? search = null,
+        string? status = null,
+        string? sortBy = null,
+        string? sortDirection = null)
     {
         IQueryable<Project> query = _dbContext.Projects
             .AsNoTracking()
@@ -38,6 +42,23 @@ public class ProjectService : IProjectService
             var statusFilter = status.Trim();
             query = query.Where(project => project.Status == statusFilter);
         }
+
+        var sortField = sortBy?.Trim().ToLowerInvariant();
+        var descending = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
+
+        query = (sortField, descending) switch
+        {
+            ("projectname", false) => query.OrderBy(project => project.ProjectName),
+            ("projectname", true) => query.OrderByDescending(project => project.ProjectName),
+            ("clientname", false) => query.OrderBy(project => project.ClientName),
+            ("clientname", true) => query.OrderByDescending(project => project.ClientName),
+            ("status", false) => query.OrderBy(project => project.Status),
+            ("status", true) => query.OrderByDescending(project => project.Status),
+            ("createdat", false) => query.OrderBy(project => project.CreatedAt),
+            ("createdat", true) => query.OrderByDescending(project => project.CreatedAt),
+            (_, true) => query.OrderByDescending(project => project.ProjectCode),
+            _ => query.OrderBy(project => project.ProjectCode)
+        };
 
         var projects = await query.ToListAsync();
 

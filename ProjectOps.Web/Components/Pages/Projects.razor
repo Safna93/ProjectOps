@@ -18,15 +18,32 @@
 </div>
 
 <div class="row g-3 align-items-end mb-4">
-    <div class="col-md-5">
+    <div class="col-md-3">
         <label class="form-label" for="project-search">Search</label>
         <InputText id="project-search" class="form-control" @bind-Value="searchText"
                    placeholder="Project code, name, or client" />
     </div>
-    <div class="col-md-4">
+    <div class="col-md-2">
         <label class="form-label" for="project-status-filter">Status</label>
         <InputText id="project-status-filter" class="form-control" @bind-Value="statusFilter"
                    placeholder="Exact status, for example Active" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label" for="project-sort-by">Sort By</label>
+        <InputSelect id="project-sort-by" class="form-select" @bind-Value="sortBy">
+            <option value="ProjectCode">Project Code</option>
+            <option value="ProjectName">Project Name</option>
+            <option value="ClientName">Client Name</option>
+            <option value="Status">Status</option>
+            <option value="CreatedAt">Created Date</option>
+        </InputSelect>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label" for="project-sort-direction">Sort Direction</label>
+        <InputSelect id="project-sort-direction" class="form-select" @bind-Value="sortDirection">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+        </InputSelect>
     </div>
     <div class="col-md-auto">
         <button type="button" class="btn btn-primary me-2" @onclick="ApplyFilters">Search</button>
@@ -163,6 +180,8 @@ else
     private string? errorMessage;
     private string searchText = string.Empty;
     private string statusFilter = string.Empty;
+    private string sortBy = "ProjectCode";
+    private string sortDirection = "asc";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -196,6 +215,9 @@ else
             {
                 queryParameters.Add($"status={Uri.EscapeDataString(statusFilter.Trim())}");
             }
+
+            queryParameters.Add($"sortBy={Uri.EscapeDataString(sortBy)}");
+            queryParameters.Add($"sortDirection={Uri.EscapeDataString(sortDirection)}");
 
             var requestUri = queryParameters.Count == 0
                 ? "api/projects"
@@ -232,6 +254,8 @@ else
     {
         searchText = string.Empty;
         statusFilter = string.Empty;
+        sortBy = "ProjectCode";
+        sortDirection = "asc";
         await LoadProjects();
     }
 

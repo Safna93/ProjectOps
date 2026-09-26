@@ -61,85 +61,6 @@ Open a terminal in the `ProjectOps` directory and run:
 
 ```powershell
 dotnet restore ProjectOps.sln
-dotnet build ProjectOps.sln
-```
-
-`dotnet restore` downloads the NuGet packages required by the projects.
-
-## How do I run the API?
-
-From the `ProjectOps` directory, run:
-
-```powershell
-dotnet run --project ProjectOps.Api
-```
-
-The terminal displays the localhost URLs. Open the HTTPS URL in a browser.
-Swagger UI is available at:
-
-```text
-https://localhost:<port>/swagger
-```
-
-Replace `<port>` with the HTTPS port shown in the terminal.
-
-Press `Ctrl+C` to stop the API.
-
-## How do I run the Blazor application?
-
-From the `ProjectOps` directory, run:
-
-```powershell
-dotnet run --project ProjectOps.Web
-```
-
-The terminal displays the localhost URLs. Open the HTTPS URL in a browser to
-view the Blazor application.
-
-Press `Ctrl+C` to stop the Blazor application.
-
-## What is a Controller?
-
-A controller is a C# class that receives HTTP requests and returns HTTP
-responses. `ProjectsController` handles requests related to projects.
-A controller is a C# class that receives HTTP requests and returns HTTP responses. `ProjectsController` handles requests related to projects. It asks `AppDbContext` for project records and returns the result.
-
-## What is an API endpoint?
-
-An API endpoint is a URL that performs a specific job. The Projects endpoint is
-`GET /api/projects`. It returns the sample projects as JSON.
-An API endpoint is a URL that performs a specific job. The Projects endpoint is `GET /api/projects`. It returns project records as JSON.
-
-## What does GET mean?
-
-GET is an HTTP method used to request data. It does not create or change data.
-
-## What is HttpClient?
-
-`HttpClient` is a .NET class used to send HTTP requests and receive HTTP
-responses from another application.
-
-## Why does Blazor use HttpClient?
-
-The Blazor Projects page uses `HttpClient` to ask the backend API for project
-data. This keeps the user interface and the backend separate.
-
-## What is JSON?
-
-JSON is a text format commonly used to send structured data over HTTP. The API
-converts the three C# project objects to JSON, and Blazor converts that JSON
-into C# objects.
-
-## What is CORS?
-
-CORS, or Cross-Origin Resource Sharing, is a browser security rule. The API
-allows requests from the Blazor application's localhost origins so the page
-can call the API on its different port.
-
-## How does the data travel from API to Blazor?
-
-The flow is:
-
 ```text
 Blazor Projects Page
 	↓
@@ -1242,4 +1163,83 @@ Modified:
 - `ProjectOps.Api/appsettings.json`
 - `ProjectOps.Api/Program.cs`
 - `ProjectOps.Api/Controllers/ProjectsController.cs`
+- `LEARNING_GUIDE.md`
+
+## Stage 19 - Sorting
+
+### What is sorting?
+
+Sorting arranges a list into an order. Ascending order goes from A to Z or
+oldest to newest. Descending order goes from Z to A or newest to oldest.
+ProjectOps can sort projects by code, name, client, status, or creation date.
+
+### OrderBy() and OrderByDescending()
+
+EF Core's `OrderBy()` sorts a query in ascending order. `OrderByDescending()`
+sorts it in descending order. ProjectOps reads the requested sort field and
+direction from optional query parameters. Unknown sort fields safely use
+Project Code as the default.
+
+### Why sort before ToListAsync()?
+
+Until `ToListAsync()` runs, an `IQueryable` describes a query that EF Core can
+translate into SQL. Search conditions, the status filter, and sorting are
+added to that query first. `ToListAsync()` then executes it, so SQL Server does
+the main filtering and sorting instead of loading every project for Blazor to
+sort in memory.
+
+### Search, filter, and sort together
+
+The service first adds a search `Where()` when a search value is present, then
+adds a status `Where()` when a status is present, then applies
+`OrderBy()` or `OrderByDescending()`. If search or status is empty, that filter
+is skipped.
+
+Example requests:
+
+```text
+GET /api/projects?sortBy=projectName&sortDirection=asc
+GET /api/projects?sortBy=createdAt&sortDirection=desc
+GET /api/projects?search=web&status=Active&sortBy=projectName&sortDirection=asc
+```
+
+### Complete sorting flow
+
+```text
+Blazor
+	↓
+GET /api/projects?...query parameters...
+	↓
+ProjectsController
+	↓
+IProjectService
+	↓
+ProjectService
+	↓
+IQueryable
+	↓
+Where()
+	↓
+OrderBy()/OrderByDescending()
+	↓
+ToListAsync()
+	↓
+SQL Server
+```
+
+### Interview explanation
+
+> In ProjectOps, I implemented server-side sorting using optional query
+> parameters. I used EF Core IQueryable with OrderBy and
+> OrderByDescending so filtering and sorting are translated into SQL and
+> executed in the database.
+
+### Stage 19 files
+
+Modified:
+
+- `ProjectOps.Api/Controllers/ProjectsController.cs`
+- `ProjectOps.Api/Services/IProjectService.cs`
+- `ProjectOps.Api/Services/ProjectService.cs`
+- `ProjectOps.Web/Components/Pages/Projects.razor`
 - `LEARNING_GUIDE.md`

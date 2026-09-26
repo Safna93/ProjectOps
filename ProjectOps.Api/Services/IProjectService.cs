@@ -5,7 +5,11 @@ namespace ProjectOps.Api.Services;
 
 public interface IProjectService
 {
-    Task<IReadOnlyList<ProjectDto>> GetAllAsync(string? search = null, string? status = null);
+    Task<IReadOnlyList<ProjectDto>> GetAllAsync(
+        string? search = null,
+        string? status = null,
+        string? sortBy = null,
+        string? sortDirection = null);
 
     Task<ProjectDto?> GetByIdAsync(int id);
 

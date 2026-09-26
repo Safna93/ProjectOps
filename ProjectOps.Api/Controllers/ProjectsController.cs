@@ -25,10 +25,12 @@ public class ProjectsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProjectDto>>> GetProjects(
         [FromQuery] string? search,
-        [FromQuery] string? status)
+        [FromQuery] string? status,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortDirection)
     {
-        _logger.LogInformation("Retrieving projects with optional search and status filters.");
-        var projects = await _projectService.GetAllAsync(search, status);
+        _logger.LogInformation("Retrieving projects with optional search, status, and sorting.");
+        var projects = await _projectService.GetAllAsync(search, status, sortBy, sortDirection);
         return Ok(projects);
     }
 
