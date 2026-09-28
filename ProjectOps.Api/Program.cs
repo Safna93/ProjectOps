@@ -95,72 +95,75 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
-
-    if (!dbContext.Projects.Any())
+    using (var scope = app.Services.CreateScope())
     {
-        dbContext.Projects.AddRange(
-            new Project
-            {
-                ProjectCode = "P001",
-                ProjectName = "Offshore Platform Upgrade",
-                ClientName = "ABC Energy",
-                Status = "In Progress"
-            },
-            new Project
-            {
-                ProjectCode = "P002",
-                ProjectName = "Refinery Modernization",
-                ClientName = "Global Energy",
-                Status = "Planning"
-            },
-            new Project
-            {
-                ProjectCode = "P003",
-                ProjectName = "Plant Maintenance",
-                ClientName = "Industrial Corp",
-                Status = "Completed"
-            });
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.Database.Migrate();
 
-        dbContext.SaveChanges();
-    }
-
-    if (app.Environment.IsDevelopment())
-    {
-        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>();
-        var demoUsers = new[]
+        if (!dbContext.Projects.Any())
         {
-            (Username: "admin", PasswordKey: "DemoUsers:AdminPassword", Role: "Admin"),
-            (Username: "user", PasswordKey: "DemoUsers:UserPassword", Role: "User")
-        };
+            dbContext.Projects.AddRange(
+                new Project
+                {
+                    ProjectCode = "P001",
+                    ProjectName = "Offshore Platform Upgrade",
+                    ClientName = "ABC Energy",
+                    Status = "In Progress"
+                },
+                new Project
+                {
+                    ProjectCode = "P002",
+                    ProjectName = "Refinery Modernization",
+                    ClientName = "Global Energy",
+                    Status = "Planning"
+                },
+                new Project
+                {
+                    ProjectCode = "P003",
+                    ProjectName = "Plant Maintenance",
+                    ClientName = "Industrial Corp",
+                    Status = "Completed"
+                });
 
-        foreach (var demoUser in demoUsers)
-        {
-            if (dbContext.AppUsers.Any(user => user.Username == demoUser.Username))
-            {
-                continue;
-            }
-
-            var password = builder.Configuration[demoUser.PasswordKey];
-            if (string.IsNullOrWhiteSpace(password))
-            {
-                throw new InvalidOperationException(
-                    $"Development seed password '{demoUser.PasswordKey}' is missing. Set it with dotnet user-secrets before starting the API.");
-            }
-
-            var user = new AppUser
-            {
-                Username = demoUser.Username,
-                Role = demoUser.Role
-            };
-            user.PasswordHash = passwordHasher.HashPassword(user, password);
-            dbContext.AppUsers.Add(user);
+            dbContext.SaveChanges();
         }
 
-        dbContext.SaveChanges();
+        if (app.Environment.IsDevelopment())
+        {
+            var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>();
+            var demoUsers = new[]
+            {
+                (Username: "admin", PasswordKey: "DemoUsers:AdminPassword", Role: "Admin"),
+                (Username: "user", PasswordKey: "DemoUsers:UserPassword", Role: "User")
+            };
+
+            foreach (var demoUser in demoUsers)
+            {
+                if (dbContext.AppUsers.Any(user => user.Username == demoUser.Username))
+                {
+                    continue;
+                }
+
+                var password = builder.Configuration[demoUser.PasswordKey];
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    throw new InvalidOperationException(
+                        $"Development seed password '{demoUser.PasswordKey}' is missing. Set it with dotnet user-secrets before starting the API.");
+                }
+
+                var user = new AppUser
+                {
+                    Username = demoUser.Username,
+                    Role = demoUser.Role
+                };
+                user.PasswordHash = passwordHasher.HashPassword(user, password);
+                dbContext.AppUsers.Add(user);
+            }
+
+            dbContext.SaveChanges();
+        }
     }
 }
 
@@ -181,3 +184,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }
