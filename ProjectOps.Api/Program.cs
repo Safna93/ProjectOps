@@ -8,6 +8,7 @@ using Microsoft.OpenApi;
 using Polly;
 using ProjectOps.Api.Data;
 using ProjectOps.Api.Exceptions;
+using ProjectOps.Api.Middleware;
 using ProjectOps.Api.Models;
 using ProjectOps.Api.Services;
 
@@ -94,6 +95,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 
 if (!app.Environment.IsEnvironment("Testing"))

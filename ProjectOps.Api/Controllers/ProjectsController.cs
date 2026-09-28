@@ -46,9 +46,11 @@ public class ProjectsController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ProjectDto>> GetProjectById(int id)
     {
+        _logger.LogInformation("Retrieving project {ProjectId}", id);
         var project = await _projectService.GetByIdAsync(id);
         if (project is null)
         {
+            _logger.LogWarning("Project {ProjectId} was not found", id);
             return NotFound();
         }
 

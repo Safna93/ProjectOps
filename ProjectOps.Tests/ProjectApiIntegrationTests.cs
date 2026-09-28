@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using ProjectOps.Api.Middleware;
 
 namespace ProjectOps.Tests;
 
@@ -95,6 +96,39 @@ public class ProjectApiIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Request_WithCorrelationId_ReturnsSameCorrelationId()
+    {
+        // Arrange
+        using var factory = new ProjectOpsApiFactory();
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/projects");
+        request.Headers.Add(CorrelationIdMiddleware.HeaderName, "stage28-test-id");
+
+        // Act
+        using var response = await client.SendAsync(request);
+
+        // Assert
+        Assert.Equal("stage28-test-id", response.Headers.GetValues(CorrelationIdMiddleware.HeaderName).Single());
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Request_WithoutCorrelationId_ReturnsGeneratedGuid()
+    {
+        // Arrange
+        using var factory = new ProjectOpsApiFactory();
+        using var client = factory.CreateClient();
+
+        // Act
+        using var response = await client.GetAsync("/api/projects");
+
+        // Assert
+        var correlationId = response.Headers.GetValues(CorrelationIdMiddleware.HeaderName).Single();
+        Assert.True(Guid.TryParse(correlationId, out _));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     private sealed record LoginResponse(string Token, string Role);

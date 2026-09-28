@@ -764,6 +764,124 @@ Modified:
 - `ProjectOps.Web/Components/Pages/Projects.razor`
 - `LEARNING_GUIDE.md`
 
+## Stage 28 - Structured Logging and Correlation ID
+
+### What is logging?
+
+Logging records useful events while an application runs. Developers use logs
+to understand what the application did and investigate problems, especially
+when a problem happens in production and cannot be reproduced immediately.
+
+### ILogger<T>
+
+`ILogger<T>` is ASP.NET Core's built-in logging interface. The `T` usually
+names the class writing the log, such as `ILogger<ProjectsController>`.
+Dependency injection supplies the logger, so application code does not need
+to create a logging system itself.
+
+### Structured logging
+
+Structured logging puts values into named placeholders instead of building
+one long message string. For example:
+
+```csharp
+_logger.LogInformation("Retrieving project {ProjectId}", id);
+```
+
+`ProjectId` is stored as a named value. A log viewer can search or filter by
+that value more easily than it can with a message assembled using string
+concatenation.
+
+### Log levels
+
+- `Trace`: extremely detailed diagnostic events, usually disabled in normal
+	production logging.
+- `Debug`: information useful while debugging, such as the HTTP method and
+	path at the start of a request.
+- `Information`: important normal events, such as retrieving or updating a
+	project.
+- `Warning`: an unusual but expected situation, such as a project not being
+	found or a concurrency conflict.
+- `Error`: an operation failed because of an unexpected exception.
+- `Critical`: a severe failure that may make the application unavailable.
+
+Use a level that matches the importance of the event. Logging every line at
+`Information` makes important events harder to find.
+
+### What is a Correlation ID?
+
+A correlation ID is a label for one HTTP request. ProjectOps reads the
+`X-Correlation-ID` request header if present; otherwise it creates a GUID. It
+returns that value in the same response header.
+
+The middleware also adds the ID to an `ILogger` scope. Logs written while that
+request is being processed, including controller, service, and exception
+handler logs, can then be associated with the same request.
+
+```text
+Request with X-Correlation-ID
+	↓
+CorrelationIdMiddleware
+	↓
+Correlation ID added to response and logging scope
+	↓
+Controller
+	↓
+Service / EF Core
+	↓
+Response with X-Correlation-ID
+```
+
+The middleware runs before exception handling so the same scope also covers
+the global exception handler. In Development, console logging includes scopes
+so the correlation ID is visible while running locally.
+
+### Why not log sensitive data?
+
+Logs may be retained and viewed by more people than the database. Never log
+passwords, JWT tokens, signing keys, or other sensitive information. Log
+non-sensitive identifiers, such as a project ID, when they help trace work.
+
+### Logging vs exception handling
+
+Logging records information for developers and operators. Exception handling
+controls what HTTP response the caller receives when code throws. ProjectOps
+uses `GlobalExceptionHandler` for unexpected errors and `ILogger` to record the
+exception server-side; the client still receives a safe `ProblemDetails`
+response rather than an internal stack trace.
+
+### Troubleshooting with correlation IDs
+
+If a request fails, copy its `X-Correlation-ID` response header and find the
+same ID in the API console or log output. The scope associates log messages
+from the request so the sequence is easier to follow.
+
+### Manually test the correlation ID
+
+1. Start the API in Development and sign in through Swagger to get a JWT.
+2. In Swagger's **Authorize** dialog, enter the token.
+3. Send an API request with a header such as
+	 `X-Correlation-ID: manual-test-123`.
+4. Confirm the response contains the same `X-Correlation-ID` header.
+5. Check the API console logs; the scope should display that ID with log
+	 messages from the request.
+6. Send another request without the header. Confirm the response contains a
+	 generated GUID and the console logs use that ID.
+
+### Stage 28 files
+
+Created:
+
+- `ProjectOps.Api/Middleware/CorrelationIdMiddleware.cs`
+
+Modified:
+
+- `ProjectOps.Api/Program.cs`
+- `ProjectOps.Api/Controllers/ProjectsController.cs`
+- `ProjectOps.Api/appsettings.Development.json`
+- `ProjectOps.Tests/ProjectApiIntegrationTests.cs`
+- `LEARNING_GUIDE.md`
+
 ## Stage 27 - In-Memory Caching
 
 ### What is caching?
