@@ -764,6 +764,74 @@ Modified:
 - `ProjectOps.Web/Components/Pages/Projects.razor`
 - `LEARNING_GUIDE.md`
 
+## Stage 27 - In-Memory Caching
+
+### What is caching?
+
+Caching keeps a copy of data that was recently requested so the application can
+return it quickly next time. ProjectOps caches an existing project returned by
+`GET /api/projects/{id}`.
+
+### Why can caching improve performance?
+
+Reading from memory is usually faster than querying a database. If the same
+project is requested again soon, the API can return its cached DTO instead of
+running the same database query.
+
+### Cache miss and cache hit
+
+A **cache miss** happens when the requested project is not in the cache. The
+service reads it from SQL Server and stores the successful result in memory.
+A **cache hit** happens when the same project is requested while that cached
+copy is still available.
+
+The service logs either `Project {Id} returned from database` or
+`Project {Id} returned from cache` so developers can see which path was used.
+
+### IMemoryCache and expiration
+
+`IMemoryCache` is ASP.NET Core's built-in in-process cache. ProjectOps registers
+it with `AddMemoryCache()` and uses a key such as `project_12` for project Id
+12. Each cached project expires after five minutes, so old entries do not stay
+in memory forever.
+
+### Cache invalidation and stale data
+
+Cached data can become stale if the database changes but the old copy remains
+in the cache. Removing an entry when its project changes is called **cache
+invalidation**. ProjectOps removes `project_{id}` after a successful update,
+delete, or document upload. The next GET then reads the latest data from the
+database. Missing projects are not cached.
+
+### Why use an in-memory cache?
+
+`IMemoryCache` is simple and suitable for a small, single-instance application
+such as this learning project. The cache belongs to that running API process.
+If an application runs on multiple server instances, each instance would have
+its own memory cache. Distributed applications commonly use a shared
+distributed cache such as Redis so all instances can use the same cached data.
+
+### Manually observe a cache hit
+
+1. Start the API and log in to obtain a JWT.
+2. In Swagger, authorize with that token.
+3. Call `GET /api/projects/{id}` for an existing project. The API log says the
+	project was returned from the database.
+4. Call the same URL again within five minutes. The log says the project was
+	returned from the cache.
+5. Update or delete that project, or upload a document to it. The log reports
+	cache removal; a later GET reads it from the database again.
+
+### Stage 27 files
+
+Modified:
+
+- `ProjectOps.Api/Program.cs`
+- `ProjectOps.Api/Services/ProjectService.cs`
+- `ProjectOps.Api/Controllers/ProjectsController.cs`
+- `ProjectOps.Tests/ProjectServiceTests.cs`
+- `LEARNING_GUIDE.md`
+
 ## Stage 21 - Unit Testing with xUnit
 
 ### What is unit testing?

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using ProjectOps.Api.Data;
 using ProjectOps.Api.Dtos;
 using ProjectOps.Api.Models;
@@ -167,6 +169,80 @@ public class ProjectServiceTests
     }
 
     [Fact]
+    public async Task GetByIdAsync_ReturnsCachedProjectOnSecondRead()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var projectEntity = new Project
+        {
+            ProjectCode = "T004",
+            ProjectName = "Original Project",
+            ClientName = "Test Client",
+            Status = "Planning",
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = "admin"
+        };
+        context.Projects.Add(projectEntity);
+        await context.SaveChangesAsync();
+        var service = CreateService(context);
+        var originalProject = await service.GetByIdAsync(projectEntity.Id);
+
+        projectEntity.ProjectName = "Changed directly in database";
+        await context.SaveChangesAsync();
+
+        // Act
+        var cachedProject = await service.GetByIdAsync(projectEntity.Id);
+
+        // Assert
+        Assert.NotNull(originalProject);
+        Assert.NotNull(cachedProject);
+        Assert.Equal("Original Project", cachedProject.ProjectName);
+    }
+
+    [Fact]
+    public async Task UpdateAndDeleteAsync_InvalidateCachedProject()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var projectEntity = new Project
+        {
+            ProjectCode = "T005",
+            ProjectName = "Original Project",
+            ClientName = "Test Client",
+            Status = "Planning",
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = "admin"
+        };
+        context.Projects.Add(projectEntity);
+        await context.SaveChangesAsync();
+        var service = CreateService(context);
+        var cachedProject = await service.GetByIdAsync(projectEntity.Id);
+        Assert.NotNull(cachedProject);
+
+        var updateDto = new UpdateProjectDto
+        {
+            ProjectCode = "T005",
+            ProjectName = "Updated Project",
+            ClientName = "Test Client",
+            Status = "Completed",
+            RowVersion = cachedProject.RowVersion
+        };
+
+        // Act
+        var updatedProject = await service.UpdateAsync(projectEntity.Id, updateDto, "admin");
+        var projectAfterUpdate = await service.GetByIdAsync(projectEntity.Id);
+        var deleted = await service.DeleteAsync(projectEntity.Id);
+        var projectAfterDelete = await service.GetByIdAsync(projectEntity.Id);
+
+        // Assert
+        Assert.NotNull(updatedProject);
+        Assert.NotNull(projectAfterUpdate);
+        Assert.Equal("Updated Project", projectAfterUpdate.ProjectName);
+        Assert.True(deleted);
+        Assert.Null(projectAfterDelete);
+    }
+
+    [Fact]
     public async Task UpdateAsync_ReturnsNullForMissingProject()
     {
         // Arrange
@@ -199,7 +275,11 @@ public class ProjectServiceTests
     private static ProjectService CreateService(AppDbContext context)
     {
         var environment = new TestWebHostEnvironment();
-        return new ProjectService(context, environment);
+        return new ProjectService(
+            context,
+            environment,
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<ProjectService>.Instance);
     }
 
     private sealed class TestWebHostEnvironment : IWebHostEnvironment

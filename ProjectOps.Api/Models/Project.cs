@@ -34,4 +34,7 @@ public class Project
     public string? DocumentFileName { get; set; }
 
     public string? DocumentStoredName { get; set; }
+
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = [];
 }

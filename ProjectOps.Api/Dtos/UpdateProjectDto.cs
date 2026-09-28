@@ -19,4 +19,7 @@ public class UpdateProjectDto
     [Required]
     [StringLength(50)]
     public string Status { get; set; } = string.Empty;
+
+    [Required]
+    public string RowVersion { get; set; } = string.Empty;
 }

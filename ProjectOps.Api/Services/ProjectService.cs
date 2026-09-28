@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using ProjectOps.Api.Data;
 using ProjectOps.Api.Dtos;
 using ProjectOps.Api.Models;
@@ -11,11 +12,19 @@ public class ProjectService : IProjectService
 {
     private readonly AppDbContext _dbContext;
     private readonly IWebHostEnvironment _environment;
+    private readonly IMemoryCache _memoryCache;
+    private readonly ILogger<ProjectService> _logger;
 
-    public ProjectService(AppDbContext dbContext, IWebHostEnvironment environment)
+    public ProjectService(
+        AppDbContext dbContext,
+        IWebHostEnvironment environment,
+        IMemoryCache memoryCache,
+        ILogger<ProjectService> logger)
     {
         _dbContext = dbContext;
         _environment = environment;
+        _memoryCache = memoryCache;
+        _logger = logger;
     }
 
     public async Task<PagedResult<ProjectDto>> GetAllAsync(
@@ -90,11 +99,27 @@ public class ProjectService : IProjectService
 
     public async Task<ProjectDto?> GetByIdAsync(int id)
     {
+        var cacheKey = GetCacheKey(id);
+        if (_memoryCache.TryGetValue(cacheKey, out ProjectDto? cachedProject) && cachedProject is not null)
+        {
+            _logger.LogInformation("Project {Id} returned from cache", id);
+            return cachedProject;
+        }
+
         var project = await _dbContext.Projects
             .AsNoTracking()
             .FirstOrDefaultAsync(project => project.Id == id);
 
-        return project is null ? null : ToDto(project);
+        if (project is null)
+        {
+            return null;
+        }
+
+        var projectDto = ToDto(project);
+        _memoryCache.Set(cacheKey, projectDto, TimeSpan.FromMinutes(5));
+        _logger.LogInformation("Project {Id} returned from database", id);
+
+        return projectDto;
     }
 
     public async Task<ProjectDto> CreateAsync(CreateProjectDto projectDto, string username)
@@ -117,11 +142,16 @@ public class ProjectService : IProjectService
 
     public async Task<ProjectDto?> UpdateAsync(int id, UpdateProjectDto projectDto, string username)
     {
+        var originalRowVersion = Convert.FromBase64String(projectDto.RowVersion);
         var project = await _dbContext.Projects.FindAsync(id);
         if (project is null)
         {
             return null;
         }
+
+        _dbContext.Entry(project)
+            .Property(project => project.RowVersion)
+            .OriginalValue = originalRowVersion;
 
         project.ProjectCode = projectDto.ProjectCode;
         project.ProjectName = projectDto.ProjectName;
@@ -131,6 +161,7 @@ public class ProjectService : IProjectService
         project.UpdatedBy = username;
 
         await _dbContext.SaveChangesAsync();
+        RemoveCachedProject(id);
 
         return ToDto(project);
     }
@@ -145,6 +176,7 @@ public class ProjectService : IProjectService
 
         _dbContext.Projects.Remove(project);
         await _dbContext.SaveChangesAsync();
+        RemoveCachedProject(id);
 
         return true;
     }
@@ -185,6 +217,8 @@ public class ProjectService : IProjectService
             File.Delete(storedPath);
             throw;
         }
+
+        RemoveCachedProject(id);
 
         if (!string.IsNullOrWhiteSpace(previousStoredName))
         {
@@ -232,7 +266,16 @@ public class ProjectService : IProjectService
             CreatedBy = project.CreatedBy,
             UpdatedAt = project.UpdatedAt,
             UpdatedBy = project.UpdatedBy,
-            DocumentFileName = project.DocumentFileName
+            DocumentFileName = project.DocumentFileName,
+            RowVersion = Convert.ToBase64String(project.RowVersion)
         };
+    }
+
+    private static string GetCacheKey(int id) => $"project_{id}";
+
+    private void RemoveCachedProject(int id)
+    {
+        _memoryCache.Remove(GetCacheKey(id));
+        _logger.LogInformation("Cache removed for project {Id}", id);
     }
 }

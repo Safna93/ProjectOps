@@ -21,4 +21,6 @@ public class ProjectDto
     public string? UpdatedBy { get; set; }
 
     public string? DocumentFileName { get; set; }
+
+    public string RowVersion { get; set; } = string.Empty;
 }

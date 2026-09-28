@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using System.Text;
@@ -42,6 +43,18 @@ public class ProjectsController : ControllerBase
         return Ok(projects);
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ProjectDto>> GetProjectById(int id)
+    {
+        var project = await _projectService.GetByIdAsync(id);
+        if (project is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(project);
+    }
+
     [HttpPost]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ProjectDto>> CreateProject(CreateProjectDto projectDto)
@@ -72,7 +85,17 @@ public class ProjectsController : ControllerBase
             return Unauthorized();
         }
 
-        var project = await _projectService.UpdateAsync(id, projectDto, username);
+        ProjectDto? project;
+        try
+        {
+            project = await _projectService.UpdateAsync(id, projectDto, username);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _logger.LogWarning("Project update conflict. ProjectId: {ProjectId}", id);
+            return Conflict("The project was modified by another user. Refresh the project and try again.");
+        }
+
         if (project is null)
         {
             _logger.LogWarning("Project not found for update. ProjectId: {ProjectId}", id);

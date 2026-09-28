@@ -92,7 +92,15 @@
 
 @if (!string.IsNullOrWhiteSpace(errorMessage))
 {
-    <div class="alert alert-danger mt-3" role="alert">@errorMessage</div>
+    <div class="alert alert-danger mt-3" role="alert">
+        @errorMessage
+        @if (isConcurrencyConflict)
+        {
+            <button type="button" class="btn btn-sm btn-outline-danger ms-3" @onclick="ReloadLatestProjects">
+                Reload latest projects
+            </button>
+        }
+    </div>
 }
 
 @if (projects is null)
@@ -189,6 +197,7 @@ else
     private bool isEditMode;
     private bool isAdmin;
     private bool isSaving;
+    private bool isConcurrencyConflict;
     private string? errorMessage;
     private string searchText = string.Empty;
     private string statusFilter = string.Empty;
@@ -304,6 +313,7 @@ else
     private async Task SaveProject()
     {
         errorMessage = null;
+        isConcurrencyConflict = false;
         isSaving = true;
 
         try
@@ -320,7 +330,8 @@ else
                         projectForm.ProjectCode,
                         projectForm.ProjectName,
                         projectForm.ClientName,
-                        projectForm.Status
+                        projectForm.Status,
+                        projectForm.RowVersion
                     });
                 if (request is null)
                 {
@@ -354,6 +365,13 @@ else
                 return;
             }
 
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                errorMessage = "The project was modified by another user. Refresh the project and try again.";
+                isConcurrencyConflict = true;
+                return;
+            }
+
             response.EnsureSuccessStatusCode();
             ResetForm();
             await LoadProjects();
@@ -377,9 +395,11 @@ else
             ProjectName = project.ProjectName,
             ClientName = project.ClientName,
             Status = project.Status
+            ,RowVersion = project.RowVersion
         };
         isEditMode = true;
         errorMessage = null;
+        isConcurrencyConflict = false;
     }
 
     private async Task DeleteProject(int id)
@@ -522,6 +542,14 @@ else
     {
         projectForm = new Project();
         isEditMode = false;
+    }
+
+    private async Task ReloadLatestProjects()
+    {
+        ResetForm();
+        errorMessage = null;
+        isConcurrencyConflict = false;
+        await LoadProjects();
     }
 
     private async Task<HttpRequestMessage?> CreateAuthorizedRequest(
