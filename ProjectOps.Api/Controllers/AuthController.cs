@@ -23,10 +23,11 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login(LoginRequest request)
     {
+        var demoUsers = _configuration.GetSection("DemoUsers");
         var role = request.Username switch
         {
-            "admin" when request.Password == "ProjectOps123!" => "Admin",
-            "user" when request.Password == "User123!" => "User",
+            "admin" when request.Password == demoUsers["AdminPassword"] => "Admin",
+            "user" when request.Password == demoUsers["UserPassword"] => "User",
             _ => null
         };
 

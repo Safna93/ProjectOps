@@ -18,7 +18,19 @@ builder.Services.AddControllers();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var jwtKey = jwtSettings["Key"] ?? throw new InvalidOperationException("JWT key is not configured.");
+var jwtKey = jwtSettings["Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException(
+        "JWT signing key configuration is missing. Configure Jwt:Key using .NET User Secrets in Development or a secure secret provider in Production.");
+}
+
+if (string.IsNullOrWhiteSpace(builder.Configuration["DemoUsers:AdminPassword"]) ||
+    string.IsNullOrWhiteSpace(builder.Configuration["DemoUsers:UserPassword"]))
+{
+    throw new InvalidOperationException(
+        "Demo login password configuration is missing. Configure DemoUsers:AdminPassword and DemoUsers:UserPassword using .NET User Secrets in Development or a secure secret provider in Production.");
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
