@@ -5,11 +5,13 @@ namespace ProjectOps.Api.Services;
 
 public interface IProjectService
 {
-    Task<IReadOnlyList<ProjectDto>> GetAllAsync(
+    Task<PagedResult<ProjectDto>> GetAllAsync(
         string? search = null,
         string? status = null,
         string? sortBy = null,
-        string? sortDirection = null);
+        string? sortDirection = null,
+        int pageNumber = 1,
+        int pageSize = 10);
 
     Task<ProjectDto?> GetByIdAsync(int id);
 

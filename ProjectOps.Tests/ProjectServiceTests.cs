@@ -31,9 +31,60 @@ public class ProjectServiceTests
         var projects = await service.GetAllAsync();
 
         // Assert
-        var project = Assert.Single(projects);
+        var project = Assert.Single(projects.Items);
         Assert.Equal("T001", project.ProjectCode);
         Assert.Equal("Test Project", project.ProjectName);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_ReturnsRequestedPageAndMetadata()
+    {
+        // Arrange
+        using var context = CreateContext();
+        for (var projectNumber = 1; projectNumber <= 12; projectNumber++)
+        {
+            context.Projects.Add(new Project
+            {
+                ProjectCode = $"T{projectNumber:000}",
+                ProjectName = $"Test Project {projectNumber}",
+                ClientName = "Test Client",
+                Status = "Planning",
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = "admin"
+            });
+        }
+
+        await context.SaveChangesAsync();
+        var service = CreateService(context);
+
+        // Act
+        var page = await service.GetAllAsync(pageNumber: 2, pageSize: 5);
+
+        // Assert
+        Assert.Equal(5, page.Items.Count);
+        Assert.Equal(["T006", "T007", "T008", "T009", "T010"],
+            page.Items.Select(project => project.ProjectCode));
+        Assert.Equal(12, page.TotalCount);
+        Assert.Equal(3, page.TotalPages);
+        Assert.Equal(2, page.PageNumber);
+        Assert.Equal(5, page.PageSize);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_UsesDefaultsForInvalidPaginationValues()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+
+        // Act
+        var page = await service.GetAllAsync(pageNumber: 0, pageSize: 0);
+
+        // Assert
+        Assert.Equal(1, page.PageNumber);
+        Assert.Equal(10, page.PageSize);
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalPages);
     }
 
     [Fact]

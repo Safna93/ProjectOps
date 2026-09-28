@@ -167,6 +167,18 @@ else
             }
         </tbody>
     </table>
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <button type="button" class="btn btn-outline-secondary"
+                disabled="@(pageNumber <= 1)" @onclick="PreviousPage">
+            Previous
+        </button>
+        <span>Page @pageNumber of @Math.Max(totalPages, 1)</span>
+        <button type="button" class="btn btn-outline-secondary"
+                disabled="@(totalPages == 0 || pageNumber >= totalPages)" @onclick="NextPage">
+            Next
+        </button>
+    </div>
 }
 
 @code {
@@ -182,6 +194,10 @@ else
     private string statusFilter = string.Empty;
     private string sortBy = "ProjectCode";
     private string sortDirection = "asc";
+    private int pageNumber = 1;
+    private const int pageSize = 10;
+    private int totalPages;
+    private int totalCount;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -218,6 +234,8 @@ else
 
             queryParameters.Add($"sortBy={Uri.EscapeDataString(sortBy)}");
             queryParameters.Add($"sortDirection={Uri.EscapeDataString(sortDirection)}");
+            queryParameters.Add($"pageNumber={pageNumber}");
+            queryParameters.Add($"pageSize={pageSize}");
 
             var requestUri = queryParameters.Count == 0
                 ? "api/projects"
@@ -236,7 +254,11 @@ else
             }
 
             response.EnsureSuccessStatusCode();
-            projects = await response.Content.ReadFromJsonAsync<List<Project>>() ?? [];
+            var result = await response.Content.ReadFromJsonAsync<PagedResult<Project>>();
+            projects = result?.Items ?? [];
+            pageNumber = result?.PageNumber ?? 1;
+            totalPages = result?.TotalPages ?? 0;
+            totalCount = result?.TotalCount ?? 0;
         }
         catch (HttpRequestException)
         {
@@ -247,6 +269,7 @@ else
 
     private async Task ApplyFilters()
     {
+        pageNumber = 1;
         await LoadProjects();
     }
 
@@ -256,7 +279,26 @@ else
         statusFilter = string.Empty;
         sortBy = "ProjectCode";
         sortDirection = "asc";
+        pageNumber = 1;
         await LoadProjects();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (pageNumber > 1)
+        {
+            pageNumber--;
+            await LoadProjects();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (pageNumber < totalPages)
+        {
+            pageNumber++;
+            await LoadProjects();
+        }
     }
 
     private async Task SaveProject()

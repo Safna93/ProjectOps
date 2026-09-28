@@ -23,14 +23,22 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProjectDto>>> GetProjects(
+    public async Task<ActionResult<PagedResult<ProjectDto>>> GetProjects(
         [FromQuery] string? search,
         [FromQuery] string? status,
         [FromQuery] string? sortBy,
-        [FromQuery] string? sortDirection)
+        [FromQuery] string? sortDirection,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
-        _logger.LogInformation("Retrieving projects with optional search, status, and sorting.");
-        var projects = await _projectService.GetAllAsync(search, status, sortBy, sortDirection);
+        _logger.LogInformation("Retrieving projects with optional search, status, sorting, and pagination.");
+        var projects = await _projectService.GetAllAsync(
+            search,
+            status,
+            sortBy,
+            sortDirection,
+            pageNumber,
+            pageSize);
         return Ok(projects);
     }
 

@@ -18,12 +18,17 @@ public class ProjectService : IProjectService
         _environment = environment;
     }
 
-    public async Task<IReadOnlyList<ProjectDto>> GetAllAsync(
+    public async Task<PagedResult<ProjectDto>> GetAllAsync(
         string? search = null,
         string? status = null,
         string? sortBy = null,
-        string? sortDirection = null)
+        string? sortDirection = null,
+        int pageNumber = 1,
+        int pageSize = 10)
     {
+        pageNumber = pageNumber < 1 ? 1 : pageNumber;
+        pageSize = pageSize < 1 ? 10 : pageSize;
+
         IQueryable<Project> query = _dbContext.Projects
             .AsNoTracking()
             .AsQueryable();
@@ -60,9 +65,27 @@ public class ProjectService : IProjectService
             _ => query.OrderBy(project => project.ProjectCode)
         };
 
-        var projects = await query.ToListAsync();
+        var totalCount = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
-        return projects.Select(ToDto).ToList();
+        if (totalPages > 0 && pageNumber > totalPages)
+        {
+            pageNumber = totalPages;
+        }
+
+        var projects = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResult<ProjectDto>
+        {
+            Items = projects.Select(ToDto).ToList(),
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages
+        };
     }
 
     public async Task<ProjectDto?> GetByIdAsync(int id)
