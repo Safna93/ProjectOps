@@ -764,6 +764,104 @@ Modified:
 - `ProjectOps.Web/Components/Pages/Projects.razor`
 - `LEARNING_GUIDE.md`
 
+## Stage 21 - Unit Testing with xUnit
+
+### What is unit testing?
+
+A unit test checks one small part of an application automatically. ProjectOps
+tests `ProjectService` methods without starting the API or connecting to the
+real SQL Server database.
+
+### Why write unit tests?
+
+Tests quickly check that important code still behaves as expected after
+changes. They can be rerun with one command and help find mistakes earlier
+than manual testing alone.
+
+### What is xUnit?
+
+xUnit is a .NET testing framework. It discovers methods marked with `[Fact]`,
+runs them, and reports which tests pass or fail.
+
+### Arrange, Act, Assert
+
+Each test is divided into three steps:
+
+- **Arrange**: prepare the test database, test records, and service.
+- **Act**: call the service method being tested.
+- **Assert**: check that the result is what was expected.
+
+The tests include comments for these three steps to make them easy to follow.
+
+### Why not use the real production database?
+
+Unit tests should not change real project data. Each test creates a unique
+EF Core InMemory database, so its records are isolated and disappear after
+the test finishes. The tests do not connect to `ProjectOpsDb` or SQL Server.
+
+The InMemory provider is a lightweight test data store. It lets the real
+`ProjectService` use an EF Core `DbContext` during these basic tests without
+requiring a running database server.
+
+### Common assertions
+
+- `Assert.Equal(expected, actual)` checks that two values match.
+- `Assert.NotNull(value)` checks that a result exists.
+- `Assert.True(condition)` checks that a condition is true.
+- `Assert.Null(value)` checks that a result is missing, such as a project that
+	does not exist.
+
+### What do pass and fail mean?
+
+A passing test means the code produced the result the test expected. A failing
+test means the result did not match, or the test could not complete; read the
+failure details to find which assertion or operation failed.
+
+The test summary uses these words:
+
+- **Passed**: tests completed and all their checks succeeded.
+- **Failed**: tests ran but one or more checks did not succeed.
+- **Skipped**: tests were intentionally not run.
+- **Total**: all discovered tests, including passed, failed, and skipped.
+
+### Test run flow
+
+```text
+dotnet test
+	↓
+xUnit discovers tests
+	↓
+Arrange
+	↓
+Act
+	↓
+Assert
+	↓
+PASS or FAIL
+```
+
+### Interview explanation
+
+> In ProjectOps, I added xUnit tests for the service layer. I used
+> Arrange-Act-Assert and an isolated EF Core test database so the tests
+> do not affect the real SQL Server database. I tested core ProjectService
+> behavior including CRUD-related logic and audit fields.
+
+### Stage 21 files
+
+Created:
+
+- `ProjectOps.Tests/ProjectOps.Tests.csproj`
+- `ProjectOps.Tests/ProjectServiceTests.cs`
+
+Modified:
+
+- `ProjectOps.sln`
+- `LEARNING_GUIDE.md`
+
+The test project uses `Microsoft.EntityFrameworkCore.InMemory` version
+`10.0.11`. No EF Core migration was created.
+
 ## Stage 8 - Model Validation
 
 Validation checks whether input is acceptable before the application saves it.

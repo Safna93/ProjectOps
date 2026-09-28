@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectOps.Api", "ProjectOp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectOps.Web", "ProjectOps.Web\ProjectOps.Web.csproj", "{F3E3667D-24EF-4086-BC6F-61E68DC03CF3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectOps.Tests", "ProjectOps.Tests\ProjectOps.Tests.csproj", "{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{F3E3667D-24EF-4086-BC6F-61E68DC03CF3}.Release|x64.Build.0 = Release|Any CPU
 		{F3E3667D-24EF-4086-BC6F-61E68DC03CF3}.Release|x86.ActiveCfg = Release|Any CPU
 		{F3E3667D-24EF-4086-BC6F-61E68DC03CF3}.Release|x86.Build.0 = Release|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Debug|x64.Build.0 = Debug|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Debug|x86.Build.0 = Debug|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Release|x64.ActiveCfg = Release|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Release|x64.Build.0 = Release|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Release|x86.ActiveCfg = Release|Any CPU
+		{B8DA518E-1AB2-4009-9F22-B9A1C1E31514}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
