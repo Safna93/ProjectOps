@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
@@ -23,13 +24,6 @@ if (string.IsNullOrWhiteSpace(jwtKey))
 {
     throw new InvalidOperationException(
         "JWT signing key configuration is missing. Configure Jwt:Key using .NET User Secrets in Development or a secure secret provider in Production.");
-}
-
-if (string.IsNullOrWhiteSpace(builder.Configuration["DemoUsers:AdminPassword"]) ||
-    string.IsNullOrWhiteSpace(builder.Configuration["DemoUsers:UserPassword"]))
-{
-    throw new InvalidOperationException(
-        "Demo login password configuration is missing. Configure DemoUsers:AdminPassword and DemoUsers:UserPassword using .NET User Secrets in Development or a secure secret provider in Production.");
 }
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -69,6 +63,8 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
 builder.Services.AddHttpClient<IExternalProjectService, ExternalProjectService>(client =>
     {
         var baseUrl = builder.Configuration["ResilienceDemo:BaseUrl"]
@@ -128,6 +124,41 @@ using (var scope = app.Services.CreateScope())
                 ClientName = "Industrial Corp",
                 Status = "Completed"
             });
+
+        dbContext.SaveChanges();
+    }
+
+    if (app.Environment.IsDevelopment())
+    {
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>();
+        var demoUsers = new[]
+        {
+            (Username: "admin", PasswordKey: "DemoUsers:AdminPassword", Role: "Admin"),
+            (Username: "user", PasswordKey: "DemoUsers:UserPassword", Role: "User")
+        };
+
+        foreach (var demoUser in demoUsers)
+        {
+            if (dbContext.AppUsers.Any(user => user.Username == demoUser.Username))
+            {
+                continue;
+            }
+
+            var password = builder.Configuration[demoUser.PasswordKey];
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                throw new InvalidOperationException(
+                    $"Development seed password '{demoUser.PasswordKey}' is missing. Set it with dotnet user-secrets before starting the API.");
+            }
+
+            var user = new AppUser
+            {
+                Username = demoUser.Username,
+                Role = demoUser.Role
+            };
+            user.PasswordHash = passwordHasher.HashPassword(user, password);
+            dbContext.AppUsers.Add(user);
+        }
 
         dbContext.SaveChanges();
     }

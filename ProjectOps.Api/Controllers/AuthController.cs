@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using ProjectOps.Api.Models;
+using ProjectOps.Api.Services;
 
 namespace ProjectOps.Api.Controllers;
 
@@ -13,25 +14,20 @@ namespace ProjectOps.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IConfiguration _configuration;
+    private readonly IAuthService _authService;
 
-    public AuthController(IConfiguration configuration)
+    public AuthController(IConfiguration configuration, IAuthService authService)
     {
         _configuration = configuration;
+        _authService = authService;
     }
 
     [AllowAnonymous]
     [HttpPost("login")]
-    public IActionResult Login(LoginRequest request)
+    public async Task<IActionResult> Login(LoginRequest request)
     {
-        var demoUsers = _configuration.GetSection("DemoUsers");
-        var role = request.Username switch
-        {
-            "admin" when request.Password == demoUsers["AdminPassword"] => "Admin",
-            "user" when request.Password == demoUsers["UserPassword"] => "User",
-            _ => null
-        };
-
-        if (role is null)
+        var user = await _authService.AuthenticateAsync(request.Username, request.Password);
+        if (user is null)
         {
             return Unauthorized();
         }
@@ -44,8 +40,8 @@ public class AuthController : ControllerBase
 
         var claims = new[]
         {
-            new Claim(ClaimTypes.Name, request.Username),
-            new Claim(ClaimTypes.Role, role)
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Role, user.Role)
         };
 
         var token = new JwtSecurityToken(
@@ -59,7 +55,7 @@ public class AuthController : ControllerBase
         {
             token = new JwtSecurityTokenHandler().WriteToken(token),
             expiresAt = expires,
-            role
+            role = user.Role
         });
     }
 }
