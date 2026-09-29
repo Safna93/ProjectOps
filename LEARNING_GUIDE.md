@@ -31,6 +31,10 @@ communicate with SQL Server. It contains the basic ASP.NET Core Web API setup, c
 pages and provide the user interface in C# and Razor components. It currently
 contains only the normal starter structure.
 
+### Login-page information section
+
+The login page keeps its existing sign-in form and adds a responsive information section beneath it. The section pairs the supplied project image with a short ProjectOps description, using a side-by-side layout on larger screens and a stacked layout on smaller screens.
+
 ## What is Program.cs?
 
 `Program.cs` is the startup file for a .NET application. It creates the
